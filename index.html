@@ -28,6 +28,7 @@
             <p class="tagline">Level up from HTML to Assembly</p>
             <div class="menu">
                 <button id="play-btn" class="btn primary glow-btn">PLAY</button>
+                <button id="bonus-mode-btn" class="btn secondary">BONUS MODE</button>
                 <button id="highscores-btn" class="btn secondary">HIGH SCORES</button>
                 <div class="high-score-preview">
                     <span>BEST:</span>
@@ -149,6 +150,32 @@
                 <ol id="highscores-full-list"></ol>
                 <p id="highscores-empty" class="empty-message hidden">No scores yet. Be the first!</p>
                 <button id="highscores-back-btn" class="btn secondary">BACK</button>
+            </div>
+        </div>
+
+        <!-- Bonus Mode Selection Screen -->
+        <div id="bonus-select-screen" class="screen overlay hidden animated-bg">
+            <div class="bonus-select-content">
+                <h2 class="glow-text">BONUS MODE</h2>
+                <p class="bonus-subtitle">Choose your challenge</p>
+                <div class="bonus-options">
+                    <button id="bonus-roguelike-btn" class="btn bonus-btn roguelike">
+                        <span class="bonus-icon">⚔️</span>
+                        <span class="bonus-name">ROGUELIKE</span>
+                        <span class="bonus-desc">Survive 5 minutes! Bricks regenerate.</span>
+                    </button>
+                    <button id="bonus-zen-btn" class="btn bonus-btn zen">
+                        <span class="bonus-icon">🧘</span>
+                        <span class="bonus-name">ZEN MODE</span>
+                        <span class="bonus-desc">Relax with shield + 10 balls.</span>
+                    </button>
+                    <button id="bonus-bounce-btn" class="btn bonus-btn bounce">
+                        <span class="bonus-icon">🦘</span>
+                        <span class="bonus-name">BOUNCE</span>
+                        <span class="bonus-desc">Doodle Jump style!</span>
+                    </button>
+                </div>
+                <button id="bonus-back-btn" class="btn secondary">BACK</button>
             </div>
         </div>
     </div>

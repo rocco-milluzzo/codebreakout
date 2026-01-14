@@ -1907,3 +1907,129 @@ body {
         font-size: 0.75rem;
     }
 }
+
+/* ============================================================================
+   BONUS MODE SELECTION SCREEN
+   ============================================================================ */
+
+#bonus-select-screen {
+    z-index: 100;
+}
+
+.bonus-select-content {
+    padding: 2rem 2.5rem;
+    border-radius: 12px;
+    background: rgba(10, 10, 15, 0.95);
+    max-width: 450px;
+    width: 90%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.bonus-select-content h2 {
+    font-size: 1.8rem;
+    color: var(--accent);
+    text-align: center;
+    letter-spacing: 0.15em;
+}
+
+.bonus-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-top: -1rem;
+}
+
+.bonus-options {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    width: 100%;
+}
+
+.bonus-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+
+.bonus-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.bonus-btn.roguelike {
+    border-color: #9b59b6;
+}
+.bonus-btn.roguelike:hover {
+    background: rgba(155, 89, 182, 0.2);
+    box-shadow: 0 4px 20px rgba(155, 89, 182, 0.3);
+}
+
+.bonus-btn.zen {
+    border-color: #27ae60;
+}
+.bonus-btn.zen:hover {
+    background: rgba(39, 174, 96, 0.2);
+    box-shadow: 0 4px 20px rgba(39, 174, 96, 0.3);
+}
+
+.bonus-btn.bounce {
+    border-color: #e74c3c;
+}
+.bonus-btn.bounce:hover {
+    background: rgba(231, 76, 60, 0.2);
+    box-shadow: 0 4px 20px rgba(231, 76, 60, 0.3);
+}
+
+.bonus-icon {
+    font-size: 1.8rem;
+}
+
+.bonus-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: 0.1em;
+}
+
+.bonus-desc {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+#bonus-back-btn {
+    margin-top: 0.5rem;
+}
+
+/* Mobile responsive for bonus select */
+@media (max-width: 600px) {
+    .bonus-select-content {
+        padding: 1.5rem 1rem;
+    }
+
+    .bonus-select-content h2 {
+        font-size: 1.4rem;
+    }
+
+    .bonus-btn {
+        padding: 0.8rem 1rem;
+    }
+
+    .bonus-icon {
+        font-size: 1.5rem;
+    }
+
+    .bonus-name {
+        font-size: 1rem;
+    }
+}

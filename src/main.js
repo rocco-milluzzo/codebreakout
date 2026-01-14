@@ -69,6 +69,9 @@ class CodeBreakout {
         this.lastQuoteTime = 0;
         this.lastQuoteTier = null;
 
+        // Bonus-only mode
+        this.bonusOnlyMode = false;
+
         this.init();
     }
 
@@ -247,9 +250,16 @@ class CodeBreakout {
         document.getElementById('resume-btn').addEventListener('click', () => this.togglePause());
         document.getElementById('quit-btn').addEventListener('click', () => this.quitToMenu());
         document.getElementById('next-level-btn').addEventListener('click', () => this.nextLevel());
-        document.getElementById('play-again-btn').addEventListener('click', () => this.startGame());
+        document.getElementById('play-again-btn').addEventListener('click', () => this.playAgain());
         document.getElementById('submit-score-btn').addEventListener('click', () => this.submitScore());
         document.getElementById('sound-toggle').addEventListener('click', () => this.toggleSound());
+
+        // Bonus mode buttons
+        document.getElementById('bonus-mode-btn').addEventListener('click', () => this.showBonusSelect());
+        document.getElementById('bonus-back-btn').addEventListener('click', () => this.showScreen('start'));
+        document.getElementById('bonus-roguelike-btn').addEventListener('click', () => this.startBonusLevel('roguelike'));
+        document.getElementById('bonus-zen-btn').addEventListener('click', () => this.startBonusLevel('relax'));
+        document.getElementById('bonus-bounce-btn').addEventListener('click', () => this.startBonusLevel('doodle'));
 
         // Resize
         window.addEventListener('resize', () => this.setupCanvas());
@@ -284,8 +294,41 @@ class CodeBreakout {
     startGame() {
         this.state.reset();
         this.state.level = 0;
+        this.bonusOnlyMode = false;
 
         // Reset the submit score button for the new game
+        const submitBtn = document.getElementById('submit-score-btn');
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'SAVE SCORE';
+        }
+
+        this.showLevelIntro();
+    }
+
+    showBonusSelect() {
+        this.showScreen('bonus-select');
+    }
+
+    playAgain() {
+        if (this.bonusOnlyMode) {
+            this.showBonusSelect();
+        } else {
+            this.startGame();
+        }
+    }
+
+    startBonusLevel(bonusType) {
+        this.state.reset();
+        this.bonusOnlyMode = true;
+
+        // Find the level index for this bonus type
+        const levelIndex = LEVELS.findIndex(l => l.bonus && l.bonus.type === bonusType);
+        if (levelIndex === -1) return;
+
+        this.state.level = levelIndex;
+
+        // Reset the submit score button
         const submitBtn = document.getElementById('submit-score-btn');
         if (submitBtn) {
             submitBtn.disabled = false;
@@ -456,10 +499,15 @@ class CodeBreakout {
     loseLife() {
         const levelData = LEVELS[this.state.level];
 
-        // Bonus levels: no death penalty, go to next level
+        // Bonus levels: no death penalty
         if (levelData.bonus && levelData.bonus.noDeathPenalty) {
             this.spawnFloatingText(CONFIG.CANVAS_WIDTH / 2, CONFIG.CANVAS_HEIGHT / 2, 'BONUS OVER!', levelData.color);
-            this.nextLevel();
+            // Bonus-only mode: go to game over
+            if (this.bonusOnlyMode) {
+                this.gameOver(true);
+            } else {
+                this.nextLevel();
+            }
             return;
         }
 
@@ -491,6 +539,12 @@ class CodeBreakout {
 
         this.state.score += Math.floor(timeBonus + perfectBonus);
 
+        // Bonus-only mode: go directly to game over after bonus level
+        if (this.bonusOnlyMode) {
+            this.gameOver(true);
+            return;
+        }
+
         // Update stats
         document.getElementById('stat-time').textContent = this.formatTime(timeMs);
         document.getElementById('stat-bricks').textContent = this.state.bricksDestroyed;
@@ -518,8 +572,19 @@ class CodeBreakout {
         // Update game over title based on victory
         const gameOverTitle = document.querySelector('#game-over-screen h2');
         if (gameOverTitle) {
-            gameOverTitle.textContent = victory ? 'VICTORY!' : 'GAME OVER';
-            gameOverTitle.style.color = victory ? '#00ff88' : '#ff4455';
+            if (this.bonusOnlyMode) {
+                gameOverTitle.textContent = 'BONUS COMPLETE!';
+                gameOverTitle.style.color = LEVELS[this.state.level].color;
+            } else {
+                gameOverTitle.textContent = victory ? 'VICTORY!' : 'GAME OVER';
+                gameOverTitle.style.color = victory ? '#00ff88' : '#ff4455';
+            }
+        }
+
+        // Update play again button text
+        const playAgainBtn = document.getElementById('play-again-btn');
+        if (playAgainBtn) {
+            playAgainBtn.textContent = this.bonusOnlyMode ? 'BACK TO BONUS' : 'PLAY AGAIN';
         }
 
         // Display high scores (score will be saved when user clicks "SAVE SCORE")
