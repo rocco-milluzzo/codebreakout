@@ -14,7 +14,7 @@ import { GameState } from './state.js';
 
 // Entities
 import { createPaddle, updatePaddle, setPaddleWidthMultiplier, resetPaddleWidth, enableMagnet, useMagnetCatch, enableInvertedControls, disableInvertedControls, enableSplitPaddle, disableSplitPaddle } from './entities/paddle.js';
-import { createBall, createBallOnPaddle, launchBall, updateBallPosition, checkWallCollision, isBallOutOfBounds, bounceOffShield, updateBallVelocity, setBallSpeedMultiplier, resetBallSpeed, createMultiBalls, syncBallWithPaddle, enableFireball, disableFireball, enableDoodleMode, applyDoodleGravity, applyDoodleJump } from './entities/ball.js';
+import { createBall, createBallOnPaddle, launchBall, updateBallPosition, checkWallCollision, isBallOutOfBounds, bounceOffShield, updateBallVelocity, setBallSpeedMultiplier, scaleBallBaseSpeed, resetBallSpeed, createMultiBalls, syncBallWithPaddle, enableFireball, disableFireball, enableDoodleMode, applyDoodleGravity, applyDoodleJump } from './entities/ball.js';
 import { createBricks, updateMovingBricks, hitBrick, findAdjacentBricks, getBrickCenter } from './entities/brick.js';
 import { spawnPositivePowerup, spawnNegativePowerup, updatePowerups as updatePowerupEntities, fireLasers, updateLaserPosition, isLaserOffScreen, checkLaserBrickCollision } from './entities/powerup.js';
 
@@ -596,10 +596,10 @@ class CodeBreakout {
             this.balls = [createBallOnPaddle(this.paddle, levelData.ballSpeed)];
         }
 
-        // Apply mobile speed multiplier
+        // Apply mobile speed multiplier (scales baseSpeed to avoid red ball effect)
         if (this.isMobile) {
             for (const ball of this.balls) {
-                setBallSpeedMultiplier(ball, this.getMobileSpeedMultiplier());
+                scaleBallBaseSpeed(ball, this.getMobileSpeedMultiplier());
             }
         }
 
@@ -759,9 +759,9 @@ class CodeBreakout {
         // Reset ball
         this.balls = [createBallOnPaddle(this.paddle, LEVELS[this.state.level].ballSpeed)];
 
-        // Apply mobile speed multiplier
+        // Apply mobile speed multiplier (scales baseSpeed to avoid red ball effect)
         if (this.isMobile) {
-            setBallSpeedMultiplier(this.balls[0], this.getMobileSpeedMultiplier());
+            scaleBallBaseSpeed(this.balls[0], this.getMobileSpeedMultiplier());
         }
 
         this.state.isLaunched = false;

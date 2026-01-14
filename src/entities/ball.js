@@ -174,6 +174,17 @@ export function setBallSpeedMultiplier(ball, multiplier) {
 }
 
 /**
+ * Scale ball base speed (for mobile - doesn't trigger visual effects)
+ * @param {object} ball - Ball object
+ * @param {number} multiplier - Speed multiplier
+ */
+export function scaleBallBaseSpeed(ball, multiplier) {
+    ball.baseSpeed *= multiplier;
+    ball.speed = ball.baseSpeed;
+    updateBallVelocity(ball);
+}
+
+/**
  * Reset ball speed to base
  * @param {object} ball - Ball object
  */
