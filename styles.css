@@ -2032,6 +2032,54 @@ body {
     box-shadow: 0 4px 20px rgba(231, 76, 60, 0.3);
 }
 
+.bonus-btn.bullet {
+    border-color: #ff0066;
+}
+.bonus-btn.bullet:hover {
+    background: rgba(255, 0, 102, 0.2);
+    box-shadow: 0 4px 20px rgba(255, 0, 102, 0.3);
+}
+
+.bonus-btn.gravity {
+    border-color: #9933ff;
+}
+.bonus-btn.gravity:hover {
+    background: rgba(153, 51, 255, 0.2);
+    box-shadow: 0 4px 20px rgba(153, 51, 255, 0.3);
+}
+
+.bonus-btn.tower {
+    border-color: #ff6600;
+}
+.bonus-btn.tower:hover {
+    background: rgba(255, 102, 0, 0.2);
+    box-shadow: 0 4px 20px rgba(255, 102, 0, 0.3);
+}
+
+.bonus-btn.madness {
+    border-color: #00ffff;
+}
+.bonus-btn.madness:hover {
+    background: rgba(0, 255, 255, 0.2);
+    box-shadow: 0 4px 20px rgba(0, 255, 255, 0.3);
+}
+
+.bonus-btn.boss {
+    border-color: #ff0000;
+}
+.bonus-btn.boss:hover {
+    background: rgba(255, 0, 0, 0.2);
+    box-shadow: 0 4px 20px rgba(255, 0, 0, 0.3);
+}
+
+.bonus-btn.speed {
+    border-color: #ffff00;
+}
+.bonus-btn.speed:hover {
+    background: rgba(255, 255, 0, 0.2);
+    box-shadow: 0 4px 20px rgba(255, 255, 0, 0.3);
+}
+
 .bonus-name {
     font-size: 1.1rem;
     font-weight: 700;
@@ -2046,6 +2094,85 @@ body {
 
 #bonus-back-btn {
     margin-top: 0.5rem;
+}
+
+/* Gravity Flip Effect */
+.gravity-flip-text {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    font-size: 3rem;
+    font-weight: 800;
+    color: #9933ff;
+    text-shadow:
+        0 0 20px #9933ff,
+        0 0 40px #9933ff,
+        0 0 60px #9933ff;
+    z-index: 1000;
+    pointer-events: none;
+    animation: gravityFlipAppear 1.5s ease-out forwards;
+}
+
+@keyframes gravityFlipAppear {
+    0% {
+        transform: translate(-50%, -50%) scale(0) rotate(0deg);
+        opacity: 0;
+    }
+    20% {
+        transform: translate(-50%, -50%) scale(1.2) rotate(10deg);
+        opacity: 1;
+    }
+    40% {
+        transform: translate(-50%, -50%) scale(1) rotate(-5deg);
+    }
+    60% {
+        transform: translate(-50%, -50%) scale(1) rotate(0deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(1) rotate(180deg);
+        opacity: 0;
+    }
+}
+
+/* Scrollable bonus options for mobile */
+.bonus-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    width: 100%;
+    max-height: 60vh;
+    overflow-y: auto;
+    padding: 0.5rem;
+}
+
+.bonus-options::-webkit-scrollbar {
+    width: 6px;
+}
+
+.bonus-options::-webkit-scrollbar-track {
+    background: rgba(18, 18, 26, 0.5);
+    border-radius: 3px;
+}
+
+.bonus-options::-webkit-scrollbar-thumb {
+    background: rgba(0, 255, 136, 0.3);
+    border-radius: 3px;
+}
+
+/* Bullet hell active effect */
+.bullet-hell-active {
+    animation: bulletHellPulse 2s ease-in-out infinite;
+}
+
+@keyframes bulletHellPulse {
+    0%, 100% {
+        box-shadow: inset 0 0 50px rgba(255, 0, 102, 0.1);
+    }
+    50% {
+        box-shadow: inset 0 0 100px rgba(255, 0, 102, 0.2);
+    }
 }
 
 /* Mobile responsive for bonus select */

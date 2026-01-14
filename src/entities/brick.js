@@ -206,6 +206,60 @@ export function getBrickPattern(patternName) {
             }
             return pattern;
         },
+
+        // BONUS: Bullet Hell - Grid with random gaps
+        bulletHell: () => {
+            const pattern = [];
+            for (let r = 0; r < 8; r++) {
+                const row = [];
+                for (let c = 0; c < 10; c++) {
+                    row.push(Math.random() < 0.75 ? 1 : 0);
+                }
+                pattern.push(row);
+            }
+            return pattern;
+        },
+
+        // BONUS: Gravity Flip - Symmetrical pattern
+        gravityFlip: () => [
+            [0, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+            [1, 1, 2, 1, 1, 1, 1, 2, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [0, 0, 1, 1, 1, 1, 1, 1, 0, 0],
+            [0, 0, 1, 1, 1, 1, 1, 1, 0, 0],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 2, 1, 1, 1, 1, 2, 1, 1],
+            [0, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        ],
+
+        // BONUS: Tower Defense - Starting rows at top
+        towerDefense: () => [
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 2, 1, 1, 2, 2, 1, 1, 2, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        ],
+
+        // BONUS: Multiball Madness - Dense pattern
+        multiballMadness: () => {
+            const pattern = [];
+            for (let r = 0; r < 10; r++) {
+                pattern.push(new Array(10).fill(1));
+            }
+            return pattern;
+        },
+
+        // BONUS: Boss Battle - Empty, boss only
+        boss: () => [],
+
+        // BONUS: Speed Run - Full pattern for fast action
+        speedRun: () => [
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        ],
     };
 
     return (patterns[patternName] || patterns.simple)();

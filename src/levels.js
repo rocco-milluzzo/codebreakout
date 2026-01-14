@@ -246,4 +246,122 @@ export const LEVELS = [
         powerupRarity: 0.3,       // Powerful powerups extremely rare
         mechanics: ['minimal_ui', 'strong_bricks', 'moving_bricks'],
     },
+    // ========== BONUS STAGE 4: BULLET HELL ==========
+    {
+        id: 19,
+        name: 'BULLET HELL',
+        color: '#ff0066',
+        description: 'Dodge the bullets!',
+        paddleWidth: 100,
+        ballSpeed: 5,
+        brickPattern: 'bulletHell',
+        powerupChance: 0.15,
+        powerupRarity: 0.8,
+        mechanics: ['bonus_stage'],
+        bonus: {
+            type: 'bulletHell',
+            duration: 180000,        // 3 minutes
+            brickRegenDelay: 5000,   // Brick respawn after 5s
+            bulletInterval: 3500,    // Start shooting every 3.5s
+            minBulletInterval: 1000, // Speed up to 1s at end
+            bulletSpeed: 2.5,        // Starting bullet speed
+            maxBulletSpeed: 5,       // Max bullet speed at end
+            initialShooters: 1,      // Start with 1 shooter
+            maxShooters: 6,          // Max 6 shooters at end
+            noDeathPenalty: true,
+        },
+    },
+    // ========== BONUS STAGE 6: TOWER DEFENSE ==========
+    {
+        id: 21,
+        name: 'TOWER DEFENSE',
+        color: '#ff6600',
+        description: 'Stop the invasion!',
+        paddleWidth: 120,
+        ballSpeed: 6,
+        brickPattern: 'towerDefense',
+        powerupChance: 0.20,
+        powerupRarity: 1.0,
+        mechanics: ['bonus_stage'],
+        bonus: {
+            type: 'towerDefense',
+            duration: 180000,
+            descentSpeed: 0.075,     // Very slow descent (quarter original speed)
+            spawnInterval: 15000,    // New row every 15s (even slower spawns)
+            noDeathPenalty: false,   // Game over if brick touches bottom!
+        },
+    },
+    // ========== BONUS STAGE 7: MULTIBALL MADNESS ==========
+    {
+        id: 22,
+        name: 'MULTIBALL MADNESS',
+        color: '#00ffff',
+        description: 'Reach 50 balls!',
+        paddleWidth: 140,           // Wide paddle to manage many balls
+        ballSpeed: 4,
+        brickPattern: 'multiballMadness',
+        powerupChance: 0,           // No powerups
+        powerupRarity: 0,
+        mechanics: ['bonus_stage'],
+        bonus: {
+            type: 'multiballMadness',
+            duration: 180000,
+            targetBalls: 50,
+            maxBalls: 100,          // Max cap
+            brickRegenDelay: 3000,
+            noDeathPenalty: false,  // Lose all balls = game over!
+        },
+    },
+    // ========== BONUS STAGE 8: BOSS BATTLE ==========
+    {
+        id: 23,
+        name: 'BOSS BATTLE',
+        color: '#ff0000',
+        description: 'Defeat the boss!',
+        paddleWidth: 100,
+        ballSpeed: 5,
+        brickPattern: 'boss',
+        powerupChance: 0.25,
+        powerupRarity: 1.0,
+        mechanics: ['bonus_stage'],
+        bonus: {
+            type: 'boss',
+            duration: 300000,        // 5 minutes max
+            bossHealth: 100,
+            bossMoveSpeed: 2,
+            bossAttackInterval: 3000,
+            noDeathPenalty: true,
+        },
+    },
+    // ========== BONUS STAGE 9: SPEED RUN (Wave-based) ==========
+    {
+        id: 24,
+        name: 'SPEED RUN',
+        color: '#ffff00',
+        description: 'Clear waves! 60 seconds!',
+        paddleWidth: 120,
+        ballSpeed: 6,
+        brickPattern: 'speedRun',
+        powerupChance: 0.25,
+        powerupRarity: 1.0,
+        mechanics: ['bonus_stage'],
+        bonus: {
+            type: 'speedRun',
+            duration: 60000,         // 60 seconds
+            waveBased: true,         // Wave-based mode
+            waveBonus: 2000,         // Points per wave cleared
+            noDeathPenalty: true,
+        },
+    },
 ];
+
+// Level classification helpers
+export const CODE_LEVEL_INDICES = LEVELS
+    .map((level, index) => ({ level, index }))
+    .filter(({ level }) => !level.bonus)
+    .map(({ index }) => index);
+
+export const BONUS_LEVEL_INDICES = LEVELS
+    .map((level, index) => ({ level, index }))
+    .filter(({ level }) => level.bonus)
+    .map(({ index }) => index);

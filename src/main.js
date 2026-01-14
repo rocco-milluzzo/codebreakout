@@ -5,7 +5,7 @@
 
 // Configuration and data
 import { CONFIG } from './config.js';
-import { LEVELS } from './levels.js';
+import { LEVELS, CODE_LEVEL_INDICES, BONUS_LEVEL_INDICES } from './levels.js';
 import { POWERUP_TYPES } from './powerups.js';
 import { BRICK_TYPES } from './brickTypes.js';
 
@@ -14,7 +14,7 @@ import { GameState } from './state.js';
 
 // Entities
 import { createPaddle, updatePaddle, setPaddleWidthMultiplier, resetPaddleWidth, enableMagnet, useMagnetCatch, enableInvertedControls, disableInvertedControls, enableSplitPaddle, disableSplitPaddle } from './entities/paddle.js';
-import { createBallOnPaddle, launchBall, updateBallPosition, checkWallCollision, isBallOutOfBounds, bounceOffShield, updateBallVelocity, setBallSpeedMultiplier, resetBallSpeed, createMultiBalls, syncBallWithPaddle, enableFireball, disableFireball, enableDoodleMode, applyDoodleGravity, applyDoodleJump } from './entities/ball.js';
+import { createBall, createBallOnPaddle, launchBall, updateBallPosition, checkWallCollision, isBallOutOfBounds, bounceOffShield, updateBallVelocity, setBallSpeedMultiplier, resetBallSpeed, createMultiBalls, syncBallWithPaddle, enableFireball, disableFireball, enableDoodleMode, applyDoodleGravity, applyDoodleJump } from './entities/ball.js';
 import { createBricks, updateMovingBricks, hitBrick, findAdjacentBricks, getBrickCenter } from './entities/brick.js';
 import { spawnPositivePowerup, spawnNegativePowerup, updatePowerups as updatePowerupEntities, fireLasers, updateLaserPosition, isLaserOffScreen, checkLaserBrickCollision } from './entities/powerup.js';
 
@@ -71,6 +71,16 @@ class CodeBreakout {
 
         // Bonus-only mode
         this.bonusOnlyMode = false;
+
+        // New bonus mode state
+        this.bullets = [];
+        this.boss = null;
+        this.gravityFlipped = false;
+        this.lastFlipTime = 0;
+        this.lastBulletTime = 0;
+        this.lastTowerSpawnTime = 0;
+        this.multiballGoalReached = false;
+        this.levelIntroTimeout = null;
 
         this.init();
     }
@@ -243,7 +253,8 @@ class CodeBreakout {
         this.canvas.addEventListener('click', () => this.handleClick());
 
         // Buttons
-        document.getElementById('play-btn').addEventListener('click', () => this.startGame());
+        document.getElementById('classic-btn').addEventListener('click', () => this.startGame('classic'));
+        document.getElementById('campaign-btn').addEventListener('click', () => this.startGame('campaign'));
         document.getElementById('highscores-btn').addEventListener('click', () => this.showHighScores());
         document.getElementById('highscores-back-btn').addEventListener('click', () => this.showScreen('start'));
         document.getElementById('pause-btn').addEventListener('click', () => this.togglePause());
@@ -260,6 +271,11 @@ class CodeBreakout {
         document.getElementById('bonus-roguelike-btn').addEventListener('click', () => this.startBonusLevel('roguelike'));
         document.getElementById('bonus-zen-btn').addEventListener('click', () => this.startBonusLevel('relax'));
         document.getElementById('bonus-bounce-btn').addEventListener('click', () => this.startBonusLevel('doodle'));
+        document.getElementById('bonus-bullet-btn').addEventListener('click', () => this.startBonusLevel('bulletHell'));
+        document.getElementById('bonus-tower-btn').addEventListener('click', () => this.startBonusLevel('towerDefense'));
+        document.getElementById('bonus-madness-btn').addEventListener('click', () => this.startBonusLevel('multiballMadness'));
+        document.getElementById('bonus-boss-btn').addEventListener('click', () => this.startBonusLevel('boss'));
+        document.getElementById('bonus-speed-btn').addEventListener('click', () => this.startBonusLevel('speedRun'));
 
         // Resize
         window.addEventListener('resize', () => this.setupCanvas());
@@ -291,9 +307,50 @@ class CodeBreakout {
     // ========================================================================
     // GAME FLOW
     // ========================================================================
-    startGame() {
+    /**
+     * Build level sequence based on game mode
+     * @param {string} mode - 'classic', 'campaign', or 'bonus'
+     * @returns {number[]} Array of level indices
+     */
+    buildLevelSequence(mode) {
+        if (mode === 'classic') {
+            // Only code levels (no bonus)
+            return [...CODE_LEVEL_INDICES];
+        }
+        if (mode === 'campaign') {
+            // Insert a bonus after every 2 code levels
+            const sequence = [];
+            let bonusIndex = 0;
+            CODE_LEVEL_INDICES.forEach((levelIdx, i) => {
+                sequence.push(levelIdx);
+                // After every 2 code levels, add a bonus
+                if ((i + 1) % 2 === 0 && bonusIndex < BONUS_LEVEL_INDICES.length) {
+                    sequence.push(BONUS_LEVEL_INDICES[bonusIndex]);
+                    bonusIndex++;
+                }
+            });
+            return sequence;
+        }
+        // 'bonus' mode - sequence set by startBonusLevel
+        return [];
+    }
+
+    startGame(mode = 'classic') {
+        // Cancel any existing game loop and intro timeout
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+            this.animationId = null;
+        }
+        if (this.levelIntroTimeout) {
+            clearTimeout(this.levelIntroTimeout);
+            this.levelIntroTimeout = null;
+        }
+
         this.state.reset();
-        this.state.level = 0;
+        this.state.gameMode = mode;
+        this.state.levelSequence = this.buildLevelSequence(mode);
+        this.state.sequenceIndex = 0;
+        this.state.level = this.state.levelSequence[0];
         this.bonusOnlyMode = false;
 
         // Reset the submit score button for the new game
@@ -314,11 +371,22 @@ class CodeBreakout {
         if (this.bonusOnlyMode) {
             this.showBonusSelect();
         } else {
-            this.startGame();
+            // Restart with same game mode
+            this.startGame(this.state.gameMode);
         }
     }
 
     startBonusLevel(bonusType) {
+        // Cancel any existing game loop and intro timeout
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+            this.animationId = null;
+        }
+        if (this.levelIntroTimeout) {
+            clearTimeout(this.levelIntroTimeout);
+            this.levelIntroTimeout = null;
+        }
+
         this.state.reset();
         this.bonusOnlyMode = true;
 
@@ -341,8 +409,20 @@ class CodeBreakout {
     showLevelIntro() {
         const levelData = LEVELS[this.state.level];
 
+        // Cancel any existing intro timeout
+        if (this.levelIntroTimeout) {
+            clearTimeout(this.levelIntroTimeout);
+        }
+
         // Update intro screen content
-        document.getElementById('intro-level-number').textContent = `LEVEL ${this.state.level + 1}`;
+        const levelNumberEl = document.getElementById('intro-level-number');
+        if (levelData.bonus) {
+            // Hide level number for bonus stages
+            levelNumberEl.style.display = 'none';
+        } else {
+            levelNumberEl.style.display = '';
+            levelNumberEl.textContent = `LEVEL ${this.state.level + 1}`;
+        }
         document.getElementById('intro-level-name').textContent = levelData.name;
         document.getElementById('intro-level-name').style.color = levelData.color;
         document.getElementById('intro-level-desc').textContent = levelData.description;
@@ -350,7 +430,8 @@ class CodeBreakout {
         this.showScreen('level-intro');
 
         // Auto-hide after 1.5 seconds and start level
-        setTimeout(() => {
+        this.levelIntroTimeout = setTimeout(() => {
+            this.levelIntroTimeout = null;
             this.showScreen('game');
             this.initLevel();
             if (!this.animationId) {
@@ -375,6 +456,15 @@ class CodeBreakout {
         this.shield = null;
         this.state.activePowerups = {};
         this.state.destroyedBricks = [];
+
+        // Reset new bonus mode state
+        this.bullets = [];
+        this.boss = null;
+        this.gravityFlipped = false;
+        this.lastFlipTime = Date.now();
+        this.lastBulletTime = Date.now();
+        this.lastTowerSpawnTime = Date.now();
+        this.multiballGoalReached = false;
 
         // Check if bonus level
         const isBonus = levelData.bonus !== undefined;
@@ -423,6 +513,35 @@ class CodeBreakout {
                 for (const ball of this.balls) {
                     enableDoodleMode(ball, levelData.bonus.gravity, levelData.bonus.jumpForce);
                 }
+            }
+
+            // Boss battle mode
+            if (levelData.bonus.type === 'boss') {
+                this.boss = {
+                    x: CONFIG.CANVAS_WIDTH / 2 - 100,
+                    y: 80,
+                    width: 200,
+                    height: 60,
+                    health: levelData.bonus.bossHealth,
+                    maxHealth: levelData.bonus.bossHealth,
+                    moveDir: 1,
+                    moveSpeed: levelData.bonus.bossMoveSpeed,
+                    lastAttackTime: Date.now(),
+                    attackInterval: levelData.bonus.bossAttackInterval,
+                    phase: 1, // Boss gets harder as health drops
+                };
+            }
+
+            // Gravity flip mode - set paddle to normal position initially
+            if (levelData.bonus.type === 'gravityFlip') {
+                this.gravityFlipped = false;
+                this.paddle.y = CONFIG.CANVAS_HEIGHT - CONFIG.PADDLE_Y_OFFSET;
+            }
+
+            // Speed Run wave-based mode
+            if (levelData.bonus.type === 'speedRun') {
+                this.speedRunWave = 1;
+                this.speedRunWaveCleared = false;
             }
         } else {
             this.state.bonusEndTime = 0;
@@ -485,14 +604,15 @@ class CodeBreakout {
     }
 
     nextLevel() {
-        this.state.level++;
+        this.state.sequenceIndex++;
 
-        if (this.state.level >= LEVELS.length) {
+        if (this.state.sequenceIndex >= this.state.levelSequence.length) {
             // Game complete!
             this.gameOver(true);
             return;
         }
 
+        this.state.level = this.state.levelSequence[this.state.sequenceIndex];
         this.showLevelIntro();
     }
 
@@ -551,9 +671,11 @@ class CodeBreakout {
         document.getElementById('stat-combo').textContent = `x${this.state.maxMultiplier.toFixed(2)}`;
         document.getElementById('stat-score').textContent = Math.floor(timeBonus + perfectBonus);
 
-        // Next level preview
-        if (this.state.level + 1 < LEVELS.length) {
-            document.getElementById('next-level-name').textContent = `Next: ${LEVELS[this.state.level + 1].name}`;
+        // Next level preview (use sequence system)
+        const nextSequenceIndex = this.state.sequenceIndex + 1;
+        if (nextSequenceIndex < this.state.levelSequence.length) {
+            const nextLevelIndex = this.state.levelSequence[nextSequenceIndex];
+            document.getElementById('next-level-name').textContent = `Next: ${LEVELS[nextLevelIndex].name}`;
         } else {
             document.getElementById('next-level-name').textContent = 'Final Level Complete!';
         }
@@ -569,15 +691,19 @@ class CodeBreakout {
         document.getElementById('final-score').textContent = this.state.score.toLocaleString();
         document.getElementById('reached-level').textContent = LEVELS[this.state.level].name;
 
-        // Update game over title based on victory
+        // Update game over title based on victory and mode
         const gameOverTitle = document.querySelector('#game-over-screen h2');
         if (gameOverTitle) {
             if (this.bonusOnlyMode) {
                 gameOverTitle.textContent = 'BONUS COMPLETE!';
                 gameOverTitle.style.color = LEVELS[this.state.level].color;
+            } else if (victory) {
+                const modeTitle = this.state.gameMode === 'classic' ? 'CLASSIC COMPLETE!' : 'CAMPAIGN COMPLETE!';
+                gameOverTitle.textContent = modeTitle;
+                gameOverTitle.style.color = '#00ff88';
             } else {
-                gameOverTitle.textContent = victory ? 'VICTORY!' : 'GAME OVER';
-                gameOverTitle.style.color = victory ? '#00ff88' : '#ff4455';
+                gameOverTitle.textContent = 'GAME OVER';
+                gameOverTitle.style.color = '#ff4455';
             }
         }
 
@@ -651,6 +777,8 @@ class CodeBreakout {
         this.updatePowerupTimers();
         this.updateScreenShake();
         this.updateBonusLevel();
+        this.updateBullets();
+        this.updateBoss();
         this.checkExtraLife();
         this.checkLevelComplete();
     }
@@ -698,6 +826,447 @@ class CodeBreakout {
         if (levelData.bonus.permanentShield && !this.shield) {
             this.shield = { permanent: true };
         }
+
+        // BULLET HELL: Bricks shoot bullets at paddle (difficulty scales over time)
+        if (levelData.bonus.type === 'bulletHell') {
+            const elapsed = now - this.state.levelStartTime;
+            const progress = Math.min(1, elapsed / levelData.bonus.duration);
+            const currentInterval = levelData.bonus.bulletInterval -
+                (levelData.bonus.bulletInterval - (levelData.bonus.minBulletInterval || 1500)) * progress;
+
+            if (now - this.lastBulletTime >= currentInterval) {
+                this.lastBulletTime = now;
+                this.spawnBulletHellBullets(levelData);
+            }
+        }
+
+        // GRAVITY FLIP: Flip gravity periodically
+        if (levelData.bonus.type === 'gravityFlip') {
+            if (now - this.lastFlipTime >= levelData.bonus.flipInterval) {
+                this.lastFlipTime = now;
+                this.gravityFlipped = !this.gravityFlipped;
+                this.showGravityFlipEffect();
+                // Reposition paddle
+                if (this.gravityFlipped) {
+                    this.paddle.y = 50;
+                } else {
+                    this.paddle.y = CONFIG.CANVAS_HEIGHT - CONFIG.PADDLE_Y_OFFSET;
+                }
+            }
+        }
+
+        // TOWER DEFENSE: Bricks descend and spawn new rows (only after ball is launched)
+        if (levelData.bonus.type === 'towerDefense' && this.state.isLaunched) {
+            // Move all bricks down
+            for (const brick of this.bricks) {
+                if (!brick.destroyed) {
+                    brick.y += levelData.bonus.descentSpeed;
+                    // Check if any brick reached bottom - game over!
+                    if (brick.y + brick.height >= CONFIG.CANVAS_HEIGHT - 80) {
+                        this.spawnFloatingText(CONFIG.CANVAS_WIDTH / 2, CONFIG.CANVAS_HEIGHT / 2, 'INVASION!', '#ff0000');
+                        this.gameOver(false);
+                        return;
+                    }
+                }
+            }
+            // Spawn new row periodically
+            if (now - this.lastTowerSpawnTime >= levelData.bonus.spawnInterval) {
+                this.lastTowerSpawnTime = now;
+                this.spawnTowerDefenseRow();
+            }
+        }
+
+        // MULTIBALL MADNESS: Check if goal reached
+        if (levelData.bonus.type === 'multiballMadness') {
+            const ballCountEl = document.getElementById('ball-count');
+            if (ballCountEl) {
+                ballCountEl.textContent = `${this.balls.length}/${levelData.bonus.targetBalls}`;
+            }
+            if (!this.multiballGoalReached && this.balls.length >= levelData.bonus.targetBalls) {
+                this.multiballGoalReached = true;
+                this.spawnFloatingText(CONFIG.CANVAS_WIDTH / 2, CONFIG.CANVAS_HEIGHT / 2, 'GOAL REACHED!', '#00ffff');
+                this.state.score += 10000; // Big bonus
+                this.audio.playSound('powerup');
+            }
+        }
+
+        // SPEED RUN: Wave-based challenge
+        if (levelData.bonus.type === 'speedRun') {
+            // Multiplier increases faster in speed run
+            if (this.state.multiplier < CONFIG.MAX_MULTIPLIER) {
+                this.state.multiplier += 0.001;
+            }
+
+            // Check if all bricks are destroyed (wave cleared)
+            const remainingBricks = this.bricks.filter(b => !b.destroyed && b.maxHits > 0);
+            if (remainingBricks.length === 0 && !this.speedRunWaveCleared) {
+                this.speedRunWaveCleared = true;
+                // Award wave bonus
+                const waveBonus = levelData.bonus.waveBonus || 2000;
+                this.state.score += waveBonus * this.speedRunWave;
+                this.spawnFloatingText(CONFIG.CANVAS_WIDTH / 2, CONFIG.CANVAS_HEIGHT / 2,
+                    `WAVE ${this.speedRunWave} CLEARED! +${waveBonus * this.speedRunWave}`, '#ffff00');
+                this.audio.playSound('levelUp');
+
+                // Spawn next wave after brief delay
+                setTimeout(() => {
+                    this.speedRunWave++;
+                    this.spawnSpeedRunWave();
+                    this.speedRunWaveCleared = false;
+                    this.spawnFloatingText(CONFIG.CANVAS_WIDTH / 2, 100, `WAVE ${this.speedRunWave}`, '#ff6600');
+                }, 500);
+            }
+        }
+    }
+
+    spawnBulletHellBullets(levelData) {
+        const activeBricks = this.bricks.filter(b => !b.destroyed);
+        if (activeBricks.length === 0) return;
+
+        // Calculate difficulty based on elapsed time (scales from initial to max over duration)
+        const elapsed = Date.now() - this.state.levelStartTime;
+        const progress = Math.min(1, elapsed / levelData.bonus.duration);
+        const initialShooters = levelData.bonus.initialShooters || 1;
+        const maxShooters = levelData.bonus.maxShooters || 4;
+        const currentMaxShooters = Math.floor(initialShooters + (maxShooters - initialShooters) * progress);
+
+        const shooterCount = Math.min(activeBricks.length, currentMaxShooters);
+        const shuffled = [...activeBricks].sort(() => Math.random() - 0.5);
+        const shooters = shuffled.slice(0, shooterCount);
+
+        // Scale bullet speed with progress
+        const minSpeed = levelData.bonus.bulletSpeed || 2.5;
+        const maxSpeed = levelData.bonus.maxBulletSpeed || 5;
+        const bulletSpeed = minSpeed + (maxSpeed - minSpeed) * progress;
+
+        for (const brick of shooters) {
+            const brickCenterX = brick.x + brick.width / 2;
+            const brickCenterY = brick.y + brick.height / 2;
+            const paddleCenterX = this.paddle.x + this.paddle.width / 2;
+            const paddleCenterY = this.paddle.y + this.paddle.height / 2;
+
+            // Calculate direction to paddle
+            const dx = paddleCenterX - brickCenterX;
+            const dy = paddleCenterY - brickCenterY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            this.bullets.push({
+                x: brickCenterX,
+                y: brickCenterY,
+                dx: (dx / dist) * bulletSpeed,
+                dy: (dy / dist) * bulletSpeed,
+                radius: 5,
+            });
+        }
+        this.audio.playSound('laser');
+    }
+
+    showGravityFlipEffect() {
+        const flipText = document.createElement('div');
+        flipText.className = 'gravity-flip-text';
+        flipText.textContent = 'GRAVITY FLIP!';
+        document.getElementById('game-container').appendChild(flipText);
+        setTimeout(() => flipText.remove(), 1500);
+        this.audio.playSound('powerup');
+    }
+
+    spawnTowerDefenseRow() {
+        const cols = 10;
+        const brickTypes = [1, 1, 1, 2, 2, 3]; // Weighted random types
+        const levelData = LEVELS[this.state.level];
+
+        for (let c = 0; c < cols; c++) {
+            // 70% chance of brick
+            if (Math.random() < 0.7) {
+                const typeValue = brickTypes[Math.floor(Math.random() * brickTypes.length)];
+                let type = 'STANDARD';
+                let maxHits = 1;
+                if (typeValue === 2) {
+                    type = 'STRONG';
+                    maxHits = 2;
+                } else if (typeValue === 3) {
+                    type = 'TOUGH';
+                    maxHits = 3;
+                }
+
+                this.bricks.push({
+                    x: CONFIG.BRICK_OFFSET_LEFT + c * (CONFIG.BRICK_WIDTH + CONFIG.BRICK_PADDING),
+                    y: CONFIG.BRICK_OFFSET_TOP,
+                    width: CONFIG.BRICK_WIDTH,
+                    height: CONFIG.BRICK_HEIGHT,
+                    type,
+                    hits: 0,
+                    maxHits,
+                    color: levelData.color,
+                    destroyed: false,
+                });
+            }
+        }
+    }
+
+    spawnSpeedRunWave() {
+        const levelData = LEVELS[this.state.level];
+        const wave = this.speedRunWave;
+
+        // More rows and cols as waves progress
+        const rows = Math.min(3 + Math.floor(wave / 2), 6);
+        const cols = Math.min(8 + wave, 12);
+
+        // More tough bricks as waves progress
+        const toughChance = Math.min(0.1 + wave * 0.05, 0.4);
+        const strongChance = Math.min(0.2 + wave * 0.05, 0.5);
+
+        // Wave colors cycle through rainbow
+        const waveColors = ['#ff6600', '#ffff00', '#00ff00', '#00ffff', '#ff00ff', '#ff0066'];
+        const waveColor = waveColors[(wave - 1) % waveColors.length];
+
+        // Clear any destroyed bricks from array
+        this.bricks = this.bricks.filter(b => !b.destroyed);
+        this.state.destroyedBricks = [];
+
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                // Skip some bricks randomly for variety
+                if (Math.random() < 0.15) continue;
+
+                let type = 'STANDARD';
+                let maxHits = 1;
+                const roll = Math.random();
+                if (roll < toughChance) {
+                    type = 'TOUGH';
+                    maxHits = 3;
+                } else if (roll < toughChance + strongChance) {
+                    type = 'STRONG';
+                    maxHits = 2;
+                }
+
+                const x = CONFIG.BRICK_OFFSET_LEFT + c * (CONFIG.BRICK_WIDTH + CONFIG.BRICK_PADDING);
+                const y = CONFIG.BRICK_OFFSET_TOP + r * (CONFIG.BRICK_HEIGHT + CONFIG.BRICK_PADDING);
+
+                this.bricks.push({
+                    x,
+                    y,
+                    width: CONFIG.BRICK_WIDTH,
+                    height: CONFIG.BRICK_HEIGHT,
+                    type,
+                    hits: 0,
+                    maxHits,
+                    color: waveColor,
+                    destroyed: false,
+                });
+            }
+        }
+
+        this.audio.playSound('brick');
+    }
+
+    updateBullets() {
+        if (this.bullets.length === 0) return;
+
+        for (let i = this.bullets.length - 1; i >= 0; i--) {
+            const bullet = this.bullets[i];
+            bullet.x += bullet.dx;
+            bullet.y += bullet.dy;
+
+            // Check collision with paddle
+            if (bullet.x >= this.paddle.x &&
+                bullet.x <= this.paddle.x + this.paddle.width &&
+                bullet.y >= this.paddle.y &&
+                bullet.y <= this.paddle.y + this.paddle.height) {
+                // Hit paddle!
+                this.bullets.splice(i, 1);
+                this.triggerScreenShake(5, 200);
+                this.spawnParticles(bullet.x, bullet.y, '#ff0066', 10);
+                this.audio.playSound('brick');
+                // Lose a life when hit by bullet (bullet hell or boss battle)
+                const levelData = LEVELS[this.state.level];
+                if (levelData.bonus && (levelData.bonus.type === 'bulletHell' || levelData.bonus.type === 'boss')) {
+                    if (this.state.lives > 0) {
+                        this.state.lives--;
+                        this.updateUI();
+                        this.spawnFloatingText(this.paddle.x + this.paddle.width / 2, this.paddle.y, 'HIT!', '#ff0066');
+                        if (this.state.lives <= 0) {
+                            this.gameOver(false);
+                            return; // Stop processing bullets after game over
+                        }
+                    }
+                }
+                continue;
+            }
+
+            // Remove if off screen
+            if (bullet.y > CONFIG.CANVAS_HEIGHT || bullet.y < 0 ||
+                bullet.x < 0 || bullet.x > CONFIG.CANVAS_WIDTH) {
+                this.bullets.splice(i, 1);
+            }
+        }
+    }
+
+    updateBoss() {
+        if (!this.boss) return;
+
+        const now = Date.now();
+        const levelData = LEVELS[this.state.level];
+
+        // Initialize vertical movement if not set
+        if (this.boss.moveDirY === undefined) {
+            this.boss.moveDirY = 1;
+            this.boss.verticalSpeed = 0.5;
+            this.boss.baseY = this.boss.y;
+            this.boss.lastDirChange = now;
+        }
+
+        // Move boss horizontally
+        this.boss.x += this.boss.moveDir * this.boss.moveSpeed;
+
+        // Move boss vertically (oscillate)
+        this.boss.y += this.boss.moveDirY * this.boss.verticalSpeed;
+
+        // Bounce off walls (horizontal)
+        if (this.boss.x <= 20) {
+            this.boss.x = 20;
+            this.boss.moveDir = 1;
+        } else if (this.boss.x + this.boss.width >= CONFIG.CANVAS_WIDTH - 20) {
+            this.boss.x = CONFIG.CANVAS_WIDTH - 20 - this.boss.width;
+            this.boss.moveDir = -1;
+        }
+
+        // Bounce vertically within range
+        const minY = 50;
+        const maxY = 180;
+        if (this.boss.y <= minY) {
+            this.boss.y = minY;
+            this.boss.moveDirY = 1;
+        } else if (this.boss.y >= maxY) {
+            this.boss.y = maxY;
+            this.boss.moveDirY = -1;
+        }
+
+        // Random direction changes (more frequent in later phases)
+        const dirChangeInterval = this.boss.phase === 3 ? 800 : (this.boss.phase === 2 ? 1200 : 2000);
+        if (now - this.boss.lastDirChange >= dirChangeInterval && Math.random() < 0.3) {
+            this.boss.moveDir *= -1;
+            this.boss.lastDirChange = now;
+        }
+
+        // Update boss phase based on health
+        const healthPercent = this.boss.health / this.boss.maxHealth;
+        if (healthPercent <= 0.3) {
+            this.boss.phase = 3;
+            this.boss.moveSpeed = levelData.bonus.bossMoveSpeed * 2.5;
+            this.boss.verticalSpeed = 1.5;
+        } else if (healthPercent <= 0.6) {
+            this.boss.phase = 2;
+            this.boss.moveSpeed = levelData.bonus.bossMoveSpeed * 1.8;
+            this.boss.verticalSpeed = 1.0;
+        }
+
+        // Boss attack - shoots bullets
+        const attackInterval = this.boss.phase === 3 ? 1500 : (this.boss.phase === 2 ? 2000 : this.boss.attackInterval);
+        if (now - this.boss.lastAttackTime >= attackInterval) {
+            this.boss.lastAttackTime = now;
+            this.spawnBossAttack();
+        }
+
+        // Check collision with balls
+        for (const ball of this.balls) {
+            if (ball.stuck) continue;
+
+            // Cooldown to prevent multiple hits from same ball
+            if (ball.bossHitCooldown && now - ball.bossHitCooldown < 200) continue;
+
+            const ballRight = ball.x + ball.radius;
+            const ballLeft = ball.x - ball.radius;
+            const ballTop = ball.y - ball.radius;
+            const ballBottom = ball.y + ball.radius;
+
+            if (ballRight >= this.boss.x &&
+                ballLeft <= this.boss.x + this.boss.width &&
+                ballBottom >= this.boss.y &&
+                ballTop <= this.boss.y + this.boss.height) {
+                // Hit boss! Deal 5 damage per hit
+                const damage = 5;
+                this.boss.health -= damage;
+                ball.bossHitCooldown = now;
+                ball.dy = Math.abs(ball.dy); // Bounce down
+                this.triggerScreenShake(10, 400);
+                this.spawnParticles(ball.x, ball.y, '#ff0000', 20);
+                this.audio.playSound('brick');
+                this.state.score += 200;
+
+                // Show damage floating text
+                this.spawnFloatingText(this.boss.x + this.boss.width / 2, this.boss.y + this.boss.height, `-${damage}`, '#ff6600');
+
+                // Check if boss defeated
+                if (this.boss.health <= 0) {
+                    this.spawnFloatingText(CONFIG.CANVAS_WIDTH / 2, CONFIG.CANVAS_HEIGHT / 2, 'BOSS DEFEATED!', '#ff0000');
+                    this.state.score += 50000; // Huge bonus
+                    this.triggerScreenShake(15, 500);
+                    // Spawn victory particles
+                    for (let i = 0; i < 50; i++) {
+                        this.spawnParticles(
+                            this.boss.x + Math.random() * this.boss.width,
+                            this.boss.y + Math.random() * this.boss.height,
+                            ['#ff0000', '#ff6600', '#ffff00'][Math.floor(Math.random() * 3)],
+                            5
+                        );
+                    }
+                    this.boss = null;
+                    this.levelComplete();
+                    return;
+                }
+            }
+        }
+    }
+
+    spawnBossAttack() {
+        if (!this.boss) return;
+
+        const bossX = this.boss.x + this.boss.width / 2;
+        const bossY = this.boss.y + this.boss.height;
+        const bulletSpeed = 4;
+
+        // Attack pattern based on phase
+        if (this.boss.phase === 1) {
+            // Phase 1: Single aimed shot
+            const paddleX = this.paddle.x + this.paddle.width / 2;
+            const paddleY = this.paddle.y;
+            const dx = paddleX - bossX;
+            const dy = paddleY - bossY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            this.bullets.push({
+                x: bossX,
+                y: bossY,
+                dx: (dx / dist) * bulletSpeed,
+                dy: (dy / dist) * bulletSpeed,
+                radius: 6,
+            });
+        } else if (this.boss.phase === 2) {
+            // Phase 2: Spread shot (3 bullets)
+            for (let i = -1; i <= 1; i++) {
+                const angle = Math.PI / 2 + i * 0.3; // Spread angle
+                this.bullets.push({
+                    x: bossX + i * 30,
+                    y: bossY,
+                    dx: Math.cos(angle) * bulletSpeed,
+                    dy: Math.sin(angle) * bulletSpeed,
+                    radius: 5,
+                });
+            }
+        } else {
+            // Phase 3: Rain of bullets
+            for (let i = 0; i < 5; i++) {
+                const offsetX = (Math.random() - 0.5) * this.boss.width;
+                this.bullets.push({
+                    x: bossX + offsetX,
+                    y: bossY,
+                    dx: (Math.random() - 0.5) * 2,
+                    dy: bulletSpeed,
+                    radius: 4,
+                });
+            }
+        }
+        this.audio.playSound('laser');
     }
 
     checkExtraLife() {
@@ -803,10 +1372,14 @@ class CodeBreakout {
                 this.audio.playSound('brick');
             }
 
-            // Bottom - lose ball
-            if (isBallOutOfBounds(ball)) {
-                if (this.shield) {
-                    // Shield saves the ball
+            // Bottom/Top - lose ball (depends on gravity flip)
+            const isOutOfBounds = this.gravityFlipped
+                ? ball.y + ball.radius < 0  // Ball goes above screen when gravity flipped
+                : isBallOutOfBounds(ball);  // Ball goes below screen normally
+
+            if (isOutOfBounds) {
+                if (this.shield && !this.gravityFlipped) {
+                    // Shield saves the ball (only works for normal gravity)
                     bounceOffShield(ball);
                     // Don't consume permanent shield
                     if (!this.shield.permanent) {
@@ -873,6 +1446,24 @@ class CodeBreakout {
 
         if (brick.type === 'HAZARD') {
             this.powerups.push(spawnNegativePowerup(center.x, center.y));
+        }
+
+        // MULTIBALL MADNESS: Spawn a new ball from destroyed brick
+        if (levelData.bonus && levelData.bonus.type === 'multiballMadness') {
+            const maxBalls = levelData.bonus.maxBalls || 100;
+            if (this.balls.length < maxBalls) {
+                const newBall = createBall(
+                    center.x,
+                    center.y,
+                    levelData.ballSpeed
+                );
+                // Random direction downward
+                const angle = Math.PI / 2 + (Math.random() - 0.5) * (Math.PI / 3);
+                newBall.dx = Math.cos(angle) * newBall.speed;
+                newBall.dy = Math.sin(angle) * newBall.speed;
+                newBall.stuck = false;
+                this.balls.push(newBall);
+            }
         }
 
         // Bonus level: track for regeneration instead of removing
@@ -1283,10 +1874,231 @@ class CodeBreakout {
             activePowerups: this.state.activePowerups,
         });
 
+        // Render bullets (bullet hell / boss battle)
+        this.renderBullets();
+
+        // Render boss
+        this.renderBoss();
+
+        // Render tower defense danger zone
+        this.renderTowerDefenseZone();
+
+        // Render speed run wave counter
+        this.renderSpeedRunWave();
+
         // Restore after screen shake
         if (this.screenShake.intensity > 0) {
             this.ctx.restore();
         }
+    }
+
+    renderBullets() {
+        if (this.bullets.length === 0) return;
+
+        for (const bullet of this.bullets) {
+            // Outer glow
+            this.ctx.save();
+            this.ctx.shadowColor = '#ff0066';
+            this.ctx.shadowBlur = 10;
+
+            // Gradient for bullet
+            const gradient = this.ctx.createRadialGradient(
+                bullet.x, bullet.y, 0,
+                bullet.x, bullet.y, bullet.radius * 2
+            );
+            gradient.addColorStop(0, '#ffffff');
+            gradient.addColorStop(0.3, '#ff0066');
+            gradient.addColorStop(1, 'transparent');
+
+            this.ctx.fillStyle = gradient;
+            this.ctx.beginPath();
+            this.ctx.arc(bullet.x, bullet.y, bullet.radius * 2, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Core
+            this.ctx.fillStyle = '#ff0066';
+            this.ctx.beginPath();
+            this.ctx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            this.ctx.restore();
+        }
+    }
+
+    renderBoss() {
+        if (!this.boss) return;
+
+        const { x, y, width, height, health, maxHealth, phase } = this.boss;
+
+        // Boss body
+        this.ctx.save();
+
+        // Outer glow based on phase
+        const glowColors = ['#ff0000', '#ff6600', '#ff00ff'];
+        this.ctx.shadowColor = glowColors[phase - 1] || '#ff0000';
+        this.ctx.shadowBlur = 15 + Math.sin(Date.now() / 100) * 5;
+
+        // Main body gradient
+        const bodyGradient = this.ctx.createLinearGradient(x, y, x, y + height);
+        if (phase === 3) {
+            bodyGradient.addColorStop(0, '#ff00ff');
+            bodyGradient.addColorStop(0.5, '#aa0066');
+            bodyGradient.addColorStop(1, '#660044');
+        } else if (phase === 2) {
+            bodyGradient.addColorStop(0, '#ff6600');
+            bodyGradient.addColorStop(0.5, '#cc3300');
+            bodyGradient.addColorStop(1, '#881100');
+        } else {
+            bodyGradient.addColorStop(0, '#ff4444');
+            bodyGradient.addColorStop(0.5, '#cc0000');
+            bodyGradient.addColorStop(1, '#880000');
+        }
+
+        this.ctx.fillStyle = bodyGradient;
+        this.ctx.beginPath();
+        this.ctx.roundRect(x, y, width, height, 8);
+        this.ctx.fill();
+
+        // Boss face - angry eyes
+        const eyeSize = 10;
+        const eyeY = y + height * 0.35;
+        const leftEyeX = x + width * 0.3;
+        const rightEyeX = x + width * 0.7;
+
+        // Eye sockets
+        this.ctx.fillStyle = '#000';
+        this.ctx.beginPath();
+        this.ctx.arc(leftEyeX, eyeY, eyeSize + 3, 0, Math.PI * 2);
+        this.ctx.arc(rightEyeX, eyeY, eyeSize + 3, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // Glowing eyes
+        const eyeColor = phase === 3 ? '#ff00ff' : (phase === 2 ? '#ff6600' : '#ffff00');
+        this.ctx.fillStyle = eyeColor;
+        this.ctx.beginPath();
+        this.ctx.arc(leftEyeX, eyeY, eyeSize, 0, Math.PI * 2);
+        this.ctx.arc(rightEyeX, eyeY, eyeSize, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // Pupils that track paddle
+        const paddleX = this.paddle.x + this.paddle.width / 2;
+        const maxOffset = 4;
+        const leftOffset = Math.min(maxOffset, Math.max(-maxOffset, (paddleX - leftEyeX) / 50));
+        const rightOffset = Math.min(maxOffset, Math.max(-maxOffset, (paddleX - rightEyeX) / 50));
+
+        this.ctx.fillStyle = '#000';
+        this.ctx.beginPath();
+        this.ctx.arc(leftEyeX + leftOffset, eyeY, 4, 0, Math.PI * 2);
+        this.ctx.arc(rightEyeX + rightOffset, eyeY, 4, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // Angry eyebrows
+        this.ctx.strokeStyle = '#000';
+        this.ctx.lineWidth = 4;
+        this.ctx.beginPath();
+        this.ctx.moveTo(leftEyeX - 12, eyeY - 15);
+        this.ctx.lineTo(leftEyeX + 12, eyeY - 10);
+        this.ctx.moveTo(rightEyeX + 12, eyeY - 15);
+        this.ctx.lineTo(rightEyeX - 12, eyeY - 10);
+        this.ctx.stroke();
+
+        // Mouth
+        this.ctx.strokeStyle = '#000';
+        this.ctx.lineWidth = 3;
+        this.ctx.beginPath();
+        const mouthY = y + height * 0.7;
+        this.ctx.moveTo(x + width * 0.3, mouthY);
+        this.ctx.lineTo(x + width * 0.4, mouthY + 5);
+        this.ctx.lineTo(x + width * 0.5, mouthY);
+        this.ctx.lineTo(x + width * 0.6, mouthY + 5);
+        this.ctx.lineTo(x + width * 0.7, mouthY);
+        this.ctx.stroke();
+
+        this.ctx.restore();
+
+        // Health bar background
+        const hpBarWidth = width;
+        const hpBarHeight = 8;
+        const hpBarX = x;
+        const hpBarY = y - 15;
+
+        this.ctx.fillStyle = '#333';
+        this.ctx.fillRect(hpBarX, hpBarY, hpBarWidth, hpBarHeight);
+
+        // Health bar fill
+        const healthPercent = health / maxHealth;
+        let hpColor = '#00ff00';
+        if (healthPercent <= 0.3) hpColor = '#ff0000';
+        else if (healthPercent <= 0.6) hpColor = '#ffff00';
+
+        this.ctx.fillStyle = hpColor;
+        this.ctx.fillRect(hpBarX, hpBarY, hpBarWidth * healthPercent, hpBarHeight);
+
+        // Health bar border
+        this.ctx.strokeStyle = '#fff';
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(hpBarX, hpBarY, hpBarWidth, hpBarHeight);
+
+        // Health text
+        this.ctx.fillStyle = '#fff';
+        this.ctx.font = 'bold 10px JetBrains Mono';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText(`${health}/${maxHealth}`, x + width / 2, hpBarY - 3);
+    }
+
+    renderTowerDefenseZone() {
+        const levelData = LEVELS[this.state.level];
+        if (!levelData.bonus || levelData.bonus.type !== 'towerDefense') return;
+
+        // Danger zone line at bottom
+        const dangerY = CONFIG.CANVAS_HEIGHT - 80;
+        const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 200);
+
+        this.ctx.save();
+        this.ctx.strokeStyle = `rgba(255, 0, 0, ${0.5 + pulse * 0.5})`;
+        this.ctx.lineWidth = 3;
+        this.ctx.setLineDash([10, 5]);
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, dangerY);
+        this.ctx.lineTo(CONFIG.CANVAS_WIDTH, dangerY);
+        this.ctx.stroke();
+        this.ctx.setLineDash([]);
+
+        // Danger zone fill
+        this.ctx.fillStyle = `rgba(255, 0, 0, ${0.05 + pulse * 0.05})`;
+        this.ctx.fillRect(0, dangerY, CONFIG.CANVAS_WIDTH, CONFIG.CANVAS_HEIGHT - dangerY);
+
+        // Warning text
+        this.ctx.fillStyle = `rgba(255, 0, 0, ${0.5 + pulse * 0.3})`;
+        this.ctx.font = 'bold 12px JetBrains Mono';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('DANGER ZONE', CONFIG.CANVAS_WIDTH / 2, dangerY + 15);
+
+        this.ctx.restore();
+    }
+
+    renderSpeedRunWave() {
+        const levelData = LEVELS[this.state.level];
+        if (!levelData.bonus || levelData.bonus.type !== 'speedRun') return;
+
+        const wave = this.speedRunWave || 1;
+
+        this.ctx.save();
+
+        // Wave counter in top-right corner
+        this.ctx.textAlign = 'right';
+        this.ctx.textBaseline = 'top';
+
+        // Glow effect
+        this.ctx.shadowColor = '#ffff00';
+        this.ctx.shadowBlur = 10;
+
+        // Wave text
+        this.ctx.fillStyle = '#ffff00';
+        this.ctx.font = 'bold 24px JetBrains Mono';
+        this.ctx.fillText(`WAVE ${wave}`, CONFIG.CANVAS_WIDTH - 20, 60);
+
+        this.ctx.restore();
     }
 
     // ========================================================================
@@ -1304,7 +2116,8 @@ class CodeBreakout {
 
         // Bonus levels: time-based completion
         if (levelData.bonus) {
-            if (Date.now() >= this.state.bonusEndTime) {
+            // Safeguard: bonusEndTime must be set (not 0) before checking completion
+            if (this.state.bonusEndTime > 0 && Date.now() >= this.state.bonusEndTime) {
                 this.levelComplete();
             }
             return;
@@ -1325,8 +2138,9 @@ class CodeBreakout {
         multiplierEl.parentElement.classList.toggle('active', this.state.multiplier > 1);
 
         // Lives as hearts (handle extra lives beyond initial count)
-        const lostLives = Math.max(0, CONFIG.INITIAL_LIVES - this.state.lives);
-        const hearts = '\u2764\uFE0F'.repeat(this.state.lives) + '\uD83D\uDDA4'.repeat(lostLives);
+        const currentLives = Math.max(0, this.state.lives);
+        const lostLives = Math.max(0, CONFIG.INITIAL_LIVES - currentLives);
+        const hearts = '\u2764\uFE0F'.repeat(currentLives) + '\uD83D\uDDA4'.repeat(lostLives);
         document.getElementById('lives').textContent = hearts;
     }
 

@@ -32,6 +32,11 @@ export class GameState {
         this.bonusActive = false;
         this.lastExtraLifeScore = 0;  // Track score for 10k extra life
         this.destroyedBricks = [];     // Track destroyed bricks for regeneration
+
+        // Game mode state
+        this.gameMode = 'classic';     // 'classic' | 'campaign' | 'bonus'
+        this.levelSequence = [];       // Array of level indices to play
+        this.sequenceIndex = 0;        // Current position in sequence
     }
 
     /**
