@@ -88,6 +88,17 @@ class CodeBreakout {
         // Cooldown: 8 seconds between quotes
         if (now - this.lastQuoteTime < 8000) return;
 
+        // Don't show quotes when level is about to complete
+        const levelData = LEVELS[this.state.level];
+        if (levelData.bonus) {
+            // Bonus levels: don't show in last 3 seconds
+            if (this.state.bonusEndTime - now < 3000) return;
+        } else {
+            // Normal levels: don't show when no breakable bricks left
+            const remaining = this.bricks.filter(b => b.type !== 'UNBREAKABLE' && !b.destroyed).length;
+            if (remaining === 0) return;
+        }
+
         const tier = getComboTier(this.state.multiplier);
         if (!tier) return;
 
