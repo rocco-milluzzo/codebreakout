@@ -703,9 +703,17 @@ class CodeBreakout {
     checkExtraLife() {
         if (this.state.checkExtraLife()) {
             this.audio.playSound('powerup');
-            this.spawnFloatingText(CONFIG.CANVAS_WIDTH / 2, 100, '+1 LIFE!', '#ff4455');
+            this.showOneUp();
             this.updateUI();
         }
+    }
+
+    showOneUp() {
+        const oneUp = document.createElement('div');
+        oneUp.className = 'one-up-effect';
+        oneUp.textContent = '1UP!';
+        document.getElementById('game-container').appendChild(oneUp);
+        setTimeout(() => oneUp.remove(), 1500);
     }
 
     updatePaddleEntity() {
