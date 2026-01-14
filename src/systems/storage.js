@@ -3,9 +3,14 @@
 // High scores persistence with API backend and localStorage fallback
 // ============================================================================
 
-const STORAGE_KEY = 'codebreakout_highscores';
+const STORAGE_KEY_BASE = 'codebreakout_highscores';
 const MAX_SCORES = 10;
 const API_BASE = '/api';
+
+// Get storage key for a specific mode
+function getStorageKey(mode = 'campaign') {
+    return mode === 'campaign' ? STORAGE_KEY_BASE : `${STORAGE_KEY_BASE}_${mode}`;
+}
 
 // Track if API is available
 let apiAvailable = null;
@@ -33,11 +38,12 @@ async function checkApiAvailability() {
 
 /**
  * Load high scores from localStorage (fallback)
+ * @param {string} mode - Game mode ('campaign', 'roguelike', 'relax', 'doodle')
  * @returns {object[]} Array of high score entries
  */
-function loadHighScoresLocal() {
+function loadHighScoresLocal(mode = 'campaign') {
     try {
-        const saved = localStorage.getItem(STORAGE_KEY);
+        const saved = localStorage.getItem(getStorageKey(mode));
         return saved ? JSON.parse(saved) : [];
     } catch (e) {
         return [];
@@ -47,11 +53,12 @@ function loadHighScoresLocal() {
 /**
  * Save high scores to localStorage (fallback)
  * @param {object[]} scores - Array of high score entries
+ * @param {string} mode - Game mode
  */
-function saveHighScoresLocal(scores) {
+function saveHighScoresLocal(scores, mode = 'campaign') {
     try {
         const sorted = [...scores].sort((a, b) => b.score - a.score).slice(0, MAX_SCORES);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(sorted));
+        localStorage.setItem(getStorageKey(mode), JSON.stringify(sorted));
         return sorted;
     } catch (e) {
         return scores;
@@ -60,18 +67,19 @@ function saveHighScoresLocal(scores) {
 
 /**
  * Load high scores - API with localStorage fallback
+ * @param {string} mode - Game mode ('campaign', 'roguelike', 'relax', 'doodle')
  * @returns {Promise<object[]>} Array of high score entries
  */
-export async function loadHighScores() {
+export async function loadHighScores(mode = 'campaign') {
     const isApiAvailable = await checkApiAvailability();
 
     if (isApiAvailable) {
         try {
-            const response = await fetch(`${API_BASE}/scores`);
+            const response = await fetch(`${API_BASE}/scores?mode=${mode}`);
             if (response.ok) {
                 const scores = await response.json();
                 // Also save to localStorage as cache
-                saveHighScoresLocal(scores);
+                saveHighScoresLocal(scores, mode);
                 return scores;
             }
         } catch (error) {
@@ -79,7 +87,7 @@ export async function loadHighScores() {
         }
     }
 
-    return loadHighScoresLocal();
+    return loadHighScoresLocal(mode);
 }
 
 /**
@@ -97,13 +105,15 @@ export function saveHighScores(scores) {
  * @param {string} name - Player name
  * @param {number} score - Score value
  * @param {string} levelName - Level reached
+ * @param {string} mode - Game mode ('campaign', 'roguelike', 'relax', 'doodle')
  * @returns {Promise<object[]>} Updated high scores array
  */
-export async function addHighScore(existingScores, name, score, levelName) {
+export async function addHighScore(existingScores, name, score, levelName, mode = 'campaign') {
     const newEntry = {
         name: name || 'Anonymous',
         score,
         level: levelName,
+        mode,
         date: new Date().toISOString(),
     };
 
@@ -120,13 +130,14 @@ export async function addHighScore(existingScores, name, score, levelName) {
                     name: newEntry.name,
                     score: newEntry.score,
                     level: newEntry.level,
+                    mode: newEntry.mode,
                 }),
             });
 
             if (response.ok) {
                 const data = await response.json();
                 // Update localStorage cache
-                saveHighScoresLocal(data.leaderboard);
+                saveHighScoresLocal(data.leaderboard, mode);
                 return data.leaderboard;
             }
         } catch (error) {
@@ -136,7 +147,7 @@ export async function addHighScore(existingScores, name, score, levelName) {
 
     // Fallback to localStorage
     const newScores = [...existingScores, newEntry];
-    return saveHighScoresLocal(newScores);
+    return saveHighScoresLocal(newScores, mode);
 }
 
 /**

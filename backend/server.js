@@ -19,6 +19,9 @@ const VALID_LEVELS = [
     'TypeScript', 'C', 'ZEN MODE', 'C++', 'Go', 'Rust', 'Haskell', 'BOUNCE', 'Assembly'
 ];
 
+// Valid game modes for separate leaderboards
+const VALID_MODES = ['campaign', 'roguelike', 'relax', 'doodle'];
+
 // Database connection
 const pool = new Pool({
     host: process.env.DB_HOST || 'localhost',
@@ -95,12 +98,18 @@ const MAX_SCORE_VALUE = 999999999;
 /**
  * GET /api/scores
  * Retrieve all high scores (top 10)
+ * Query params: mode (optional) - 'campaign', 'roguelike', 'relax', 'doodle'
  */
 app.get('/api/scores', async (req, res) => {
     try {
+        const mode = req.query.mode || 'campaign';
+        if (!VALID_MODES.includes(mode)) {
+            return res.status(400).json({ error: 'Invalid mode' });
+        }
+
         const result = await pool.query(
-            'SELECT id, name, score, level, date FROM high_scores ORDER BY score DESC LIMIT $1',
-            [MAX_SCORES]
+            'SELECT id, name, score, level, mode, date FROM high_scores WHERE mode = $1 ORDER BY score DESC LIMIT $2',
+            [mode, MAX_SCORES]
         );
         res.json(result.rows);
     } catch (error) {
@@ -112,11 +121,11 @@ app.get('/api/scores', async (req, res) => {
 /**
  * POST /api/scores
  * Add a new high score
- * Body: { name: string, score: number, level: string }
+ * Body: { name: string, score: number, level: string, mode?: string }
  */
 app.post('/api/scores', async (req, res) => {
     try {
-        const { name, score, level } = req.body;
+        const { name, score, level, mode = 'campaign' } = req.body;
 
         // Validate score: must be finite number in valid range
         if (typeof score !== 'number' || !Number.isFinite(score) || score < 0 || score > MAX_SCORE_VALUE) {
@@ -126,6 +135,11 @@ app.post('/api/scores', async (req, res) => {
         // Validate level: must be in allowed list
         if (!level || !VALID_LEVELS.includes(level)) {
             return res.status(400).json({ error: 'Invalid level' });
+        }
+
+        // Validate mode
+        if (!VALID_MODES.includes(mode)) {
+            return res.status(400).json({ error: 'Invalid mode' });
         }
 
         // Validate name
@@ -142,22 +156,22 @@ app.post('/api/scores', async (req, res) => {
 
         // Insert new score
         const result = await pool.query(
-            'INSERT INTO high_scores (name, score, level, date) VALUES ($1, $2, $3, NOW()) RETURNING id, name, score, level, date',
-            [sanitizedName, Math.floor(score), level]
+            'INSERT INTO high_scores (name, score, level, mode, date) VALUES ($1, $2, $3, $4, NOW()) RETURNING id, name, score, level, mode, date',
+            [sanitizedName, Math.floor(score), level, mode]
         );
 
-        // Clean up old scores (keep only top MAX_SCORES)
+        // Clean up old scores for this mode (keep only top MAX_SCORES per mode)
         await pool.query(`
             DELETE FROM high_scores
-            WHERE id NOT IN (
-                SELECT id FROM high_scores ORDER BY score DESC LIMIT $1
+            WHERE mode = $1 AND id NOT IN (
+                SELECT id FROM high_scores WHERE mode = $1 ORDER BY score DESC LIMIT $2
             )
-        `, [MAX_SCORES]);
+        `, [mode, MAX_SCORES]);
 
-        // Return updated leaderboard
+        // Return updated leaderboard for this mode
         const leaderboard = await pool.query(
-            'SELECT id, name, score, level, date FROM high_scores ORDER BY score DESC LIMIT $1',
-            [MAX_SCORES]
+            'SELECT id, name, score, level, mode, date FROM high_scores WHERE mode = $1 ORDER BY score DESC LIMIT $2',
+            [mode, MAX_SCORES]
         );
 
         res.status(201).json({
@@ -173,11 +187,18 @@ app.post('/api/scores', async (req, res) => {
 /**
  * GET /api/scores/top
  * Get the top score value
+ * Query params: mode (optional)
  */
 app.get('/api/scores/top', async (req, res) => {
     try {
+        const mode = req.query.mode || 'campaign';
+        if (!VALID_MODES.includes(mode)) {
+            return res.status(400).json({ error: 'Invalid mode' });
+        }
+
         const result = await pool.query(
-            'SELECT score FROM high_scores ORDER BY score DESC LIMIT 1'
+            'SELECT score FROM high_scores WHERE mode = $1 ORDER BY score DESC LIMIT 1',
+            [mode]
         );
         const topScore = result.rows[0]?.score || 0;
         res.json({ topScore });
@@ -190,16 +211,25 @@ app.get('/api/scores/top', async (req, res) => {
 /**
  * GET /api/scores/check/:score
  * Check if a score qualifies for the leaderboard
+ * Query params: mode (optional)
  */
 app.get('/api/scores/check/:score', async (req, res) => {
     try {
         const score = parseInt(req.params.score, 10);
+        const mode = req.query.mode || 'campaign';
 
         if (!Number.isFinite(score) || score < 0) {
             return res.status(400).json({ error: 'Invalid score parameter' });
         }
 
-        const countResult = await pool.query('SELECT COUNT(*) as count FROM high_scores');
+        if (!VALID_MODES.includes(mode)) {
+            return res.status(400).json({ error: 'Invalid mode' });
+        }
+
+        const countResult = await pool.query(
+            'SELECT COUNT(*) as count FROM high_scores WHERE mode = $1',
+            [mode]
+        );
         const count = parseInt(countResult.rows[0].count, 10);
 
         if (count < MAX_SCORES) {
@@ -207,7 +237,8 @@ app.get('/api/scores/check/:score', async (req, res) => {
         }
 
         const lowestResult = await pool.query(
-            'SELECT score FROM high_scores ORDER BY score ASC LIMIT 1'
+            'SELECT score FROM high_scores WHERE mode = $1 ORDER BY score ASC LIMIT 1',
+            [mode]
         );
         const lowestScore = lowestResult.rows[0]?.score || 0;
 
@@ -233,13 +264,19 @@ async function initDatabase() {
                 name VARCHAR(20) NOT NULL DEFAULT 'Anonymous',
                 score INTEGER NOT NULL,
                 level VARCHAR(50) NOT NULL,
+                mode VARCHAR(20) NOT NULL DEFAULT 'campaign',
                 date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             )
         `);
 
-        // Create index for faster queries
+        // Add mode column if it doesn't exist (for existing databases)
         await pool.query(`
-            CREATE INDEX IF NOT EXISTS idx_high_scores_score ON high_scores (score DESC)
+            ALTER TABLE high_scores ADD COLUMN IF NOT EXISTS mode VARCHAR(20) NOT NULL DEFAULT 'campaign'
+        `);
+
+        // Create index for faster queries (includes mode for filtered queries)
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_high_scores_mode_score ON high_scores (mode, score DESC)
         `);
 
         console.log('Database initialized successfully');

@@ -561,7 +561,7 @@ class CodeBreakout {
         this.showScreen('level-complete');
     }
 
-    gameOver(victory) {
+    async gameOver(victory) {
         cancelAnimationFrame(this.animationId);
         this.animationId = null;
 
@@ -586,6 +586,23 @@ class CodeBreakout {
         if (playAgainBtn) {
             playAgainBtn.textContent = this.bonusOnlyMode ? 'BACK TO BONUS' : 'PLAY AGAIN';
         }
+
+        // Update leaderboard title to show which mode
+        const leaderboardTitle = document.querySelector('#leaderboard-preview h3');
+        if (leaderboardTitle) {
+            const mode = this.getCurrentScoreMode();
+            const modeNames = {
+                campaign: 'TOP SCORES',
+                roguelike: 'ROGUELIKE BEST',
+                relax: 'ZEN MODE BEST',
+                doodle: 'BOUNCE BEST',
+            };
+            leaderboardTitle.textContent = modeNames[mode] || 'TOP SCORES';
+        }
+
+        // Load high scores for the current mode
+        const mode = this.getCurrentScoreMode();
+        this.highScores = await loadHighScores(mode);
 
         // Display high scores (score will be saved when user clicks "SAVE SCORE")
         displayLeaderboard(
@@ -1287,8 +1304,20 @@ class CodeBreakout {
     // ========================================================================
     // HIGH SCORES
     // ========================================================================
+
+    /**
+     * Get the current game mode for high scores
+     * @returns {string} 'campaign' or bonus type ('roguelike', 'relax', 'doodle')
+     */
+    getCurrentScoreMode() {
+        if (!this.bonusOnlyMode) return 'campaign';
+        const levelData = LEVELS[this.state.level];
+        return levelData.bonus?.type || 'campaign';
+    }
+
     async loadHighScore() {
-        this.highScores = await loadHighScores();
+        // Load campaign scores for the start screen display
+        this.highScores = await loadHighScores('campaign');
         updateHighScoreDisplay(document.getElementById('high-score-display'), this.highScores);
     }
 
@@ -1298,14 +1327,20 @@ class CodeBreakout {
             return;
         }
 
+        const mode = this.getCurrentScoreMode();
         const playerName = document.getElementById('player-name').value.trim() || 'Anonymous';
         this.highScores = await addHighScore(
             this.highScores,
             playerName,
             this.state.score,
-            LEVELS[this.state.level].name
+            LEVELS[this.state.level].name,
+            mode
         );
-        updateHighScoreDisplay(document.getElementById('high-score-display'), this.highScores);
+
+        // Only update start screen display for campaign scores
+        if (mode === 'campaign') {
+            updateHighScoreDisplay(document.getElementById('high-score-display'), this.highScores);
+        }
 
         // Mark score as submitted to prevent duplicates
         this.state.scoreSubmitted = true;
@@ -1335,8 +1370,8 @@ class CodeBreakout {
     }
 
     async showHighScores() {
-        // Reload scores from database
-        this.highScores = await loadHighScores();
+        // Reload campaign scores from database (main menu high scores)
+        this.highScores = await loadHighScores('campaign');
         updateHighScoreDisplay(document.getElementById('high-score-display'), this.highScores);
 
         const listElement = document.getElementById('highscores-full-list');
