@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>CODEBREAKOUT</title>
+    <meta name="description" content="A programming-themed brick breaker game. Level up from HTML to Assembly!">
+    <meta name="theme-color" content="#00ff88">
+
+    <!-- Open Graph / Social Sharing -->
+    <meta property="og:title" content="CODEBREAKOUT">
+    <meta property="og:description" content="A programming-themed brick breaker game. Level up from HTML to Assembly!">
+    <meta property="og:type" content="website">
+
+    <!-- Favicon (inline SVG) -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%230a0a0f' width='100' height='100' rx='15'/><rect fill='%2300ff88' x='15' y='20' width='70' height='15' rx='3'/><rect fill='%23e44d26' x='15' y='40' width='30' height='12' rx='2'/><rect fill='%23264de4' x='55' y='40' width='30' height='12' rx='2'/><circle fill='%23fff' cx='50' cy='75' r='8'/></svg>">
+
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="game-container">
+        <!-- Start Screen -->
+        <div id="start-screen" class="screen animated-bg">
+            <h1 class="title glow-text">CODE<span class="accent shimmer">BREAKOUT</span></h1>
+            <p class="tagline">Level up from HTML to Assembly</p>
+            <div class="menu">
+                <button id="play-btn" class="btn primary glow-btn">PLAY</button>
+                <button id="highscores-btn" class="btn secondary">HIGH SCORES</button>
+                <div class="high-score-preview">
+                    <span>BEST:</span>
+                    <span id="high-score-display" class="glow-text">0</span>
+                </div>
+            </div>
+            <div class="controls-hint pulse-effect">
+                <p>Mouse / Arrow Keys / Touch</p>
+            </div>
+            <button id="sound-toggle" class="icon-btn" title="Toggle Sound">
+                <span id="sound-icon">🔊</span>
+            </button>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="screen hidden">
+            <div id="hud">
+                <div class="hud-item score-item">
+                    <span class="label">SCORE</span>
+                    <span id="score">0</span>
+                </div>
+                <div class="hud-item level-item">
+                    <span class="label">LEVEL</span>
+                    <span id="level-name">HTML</span>
+                </div>
+                <div class="hud-item lives-item">
+                    <span class="label">LIVES</span>
+                    <span id="lives" class="hearts">❤️❤️❤️</span>
+                </div>
+                <div class="hud-item multiplier">
+                    <span class="label">COMBO</span>
+                    <span id="multiplier">x1.00</span>
+                </div>
+                <button id="pause-btn" class="icon-btn">⏸️</button>
+            </div>
+            <canvas id="game-canvas"></canvas>
+            <div id="active-powerups"></div>
+            <div id="launch-hint" class="hint pulse-effect">Press SPACE or TAP to launch</div>
+        </div>
+
+        <!-- Pause Screen -->
+        <div id="pause-screen" class="screen overlay hidden">
+            <h2 class="glow-text">PAUSED</h2>
+            <button id="resume-btn" class="btn primary glow-btn">RESUME</button>
+            <button id="quit-btn" class="btn secondary">QUIT</button>
+        </div>
+
+        <!-- Level Intro Screen -->
+        <div id="level-intro-screen" class="screen overlay hidden">
+            <div class="level-intro-content">
+                <span id="intro-level-number">LEVEL 1</span>
+                <h2 id="intro-level-name">HTML</h2>
+                <p id="intro-level-desc">The foundation of the web</p>
+            </div>
+        </div>
+
+        <!-- Level Complete Screen -->
+        <div id="level-complete-screen" class="screen overlay hidden">
+            <h2 class="glow-text">LEVEL COMPLETE!</h2>
+            <div id="level-stats">
+                <div class="stat">
+                    <span class="label">Time</span>
+                    <span id="stat-time">0:00</span>
+                </div>
+                <div class="stat">
+                    <span class="label">Bricks</span>
+                    <span id="stat-bricks">0</span>
+                </div>
+                <div class="stat">
+                    <span class="label">Max Combo</span>
+                    <span id="stat-combo">x1.00</span>
+                </div>
+                <div class="stat">
+                    <span class="label">Level Score</span>
+                    <span id="stat-score">0</span>
+                </div>
+            </div>
+            <h3 id="next-level-name">Next: CSS</h3>
+            <button id="next-level-btn" class="btn primary glow-btn">CONTINUE</button>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="game-over-screen" class="screen overlay hidden game-over-bg">
+            <div class="game-over-content pulse-border">
+                <h2 class="danger-glow">GAME OVER</h2>
+                <div class="final-score">
+                    <span class="label">FINAL SCORE</span>
+                    <span id="final-score" class="score-glow">0</span>
+                </div>
+                <div class="reached-level">
+                    <span>Reached: </span>
+                    <span id="reached-level">HTML</span>
+                </div>
+                <div class="name-input">
+                    <input type="text" id="player-name" placeholder="Enter name" maxlength="16" minlength="3">
+                    <button id="submit-score-btn" class="btn secondary">SAVE SCORE</button>
+                </div>
+                <div id="leaderboard-preview">
+                    <h3>TOP SCORES</h3>
+                    <ol id="leaderboard-list"></ol>
+                </div>
+                <button id="play-again-btn" class="btn primary glow-btn">PLAY AGAIN</button>
+            </div>
+        </div>
+
+        <!-- High Scores Screen -->
+        <div id="highscores-screen" class="screen overlay hidden animated-bg">
+            <div class="highscores-content pulse-border">
+                <h2 class="glow-text">HIGH SCORES</h2>
+                <div class="highscores-header">
+                    <span class="col-rank">#</span>
+                    <span class="col-name">PLAYER</span>
+                    <span class="col-level">LEVEL</span>
+                    <span class="col-score">SCORE</span>
+                </div>
+                <ol id="highscores-full-list"></ol>
+                <p id="highscores-empty" class="empty-message hidden">No scores yet. Be the first!</p>
+                <button id="highscores-back-btn" class="btn secondary">BACK</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+backend/node_modules/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Docker volumes (data persisted in containers)
+postgres_data/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Playwright screenshots
+.playwright-mcp/

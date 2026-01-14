@@ -1,0 +1,29 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Documentation
+*.md
+CLAUDE.md
+README.md
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Claude Code
+.claude
+
+# Playwright MCP
+.playwright-mcp
+
+# OS
+.DS_Store
+Thumbs.db

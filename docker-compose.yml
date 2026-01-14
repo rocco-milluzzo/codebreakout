@@ -1,0 +1,61 @@
+services:
+  # Frontend - nginx serving static files
+  codebreakout:
+    build: .
+    container_name: codebreakout
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    volumes:
+      # Mount source files for live updates without rebuild
+      - ./index.html:/usr/share/nginx/html/index.html:ro
+      - ./styles.css:/usr/share/nginx/html/styles.css:ro
+      - ./src:/usr/share/nginx/html/src:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+
+  # Backend API - Node.js/Express
+  api:
+    build: ./backend
+    container_name: codebreakout-api
+    restart: unless-stopped
+    environment:
+      - PORT=3001
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=codebreakout
+      - DB_USER=codebreakout
+      - DB_PASSWORD=codebreakout
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3001/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # Database - PostgreSQL
+  db:
+    image: postgres:16-alpine
+    container_name: codebreakout-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=codebreakout
+      - POSTGRES_USER=codebreakout
+      - POSTGRES_PASSWORD=codebreakout
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U codebreakout -d codebreakout"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  postgres_data:
