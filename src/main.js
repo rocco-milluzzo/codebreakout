@@ -1316,8 +1316,9 @@ class CodeBreakout {
         multiplierEl.textContent = `x${this.state.multiplier.toFixed(2)}`;
         multiplierEl.parentElement.classList.toggle('active', this.state.multiplier > 1);
 
-        // Lives as hearts
-        const hearts = '\u2764\uFE0F'.repeat(this.state.lives) + '\uD83D\uDDA4'.repeat(CONFIG.INITIAL_LIVES - this.state.lives);
+        // Lives as hearts (handle extra lives beyond initial count)
+        const lostLives = Math.max(0, CONFIG.INITIAL_LIVES - this.state.lives);
+        const hearts = '\u2764\uFE0F'.repeat(this.state.lives) + '\uD83D\uDDA4'.repeat(lostLives);
         document.getElementById('lives').textContent = hearts;
     }
 
