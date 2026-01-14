@@ -189,6 +189,7 @@ export function getBrickPattern(patternName) {
             const rows = 12;  // More rows to cover more vertical space
             const cols = 10;
             const pattern = [];
+            const brickTypes = [1, 1, 1, 2, 2, 3]; // Random breakable brick types (weighted)
             for (let r = 0; r < rows; r++) {
                 const row = new Array(cols).fill(0);
                 // Each row has 1-3 platform segments, varying density
@@ -197,7 +198,8 @@ export function getBrickPattern(patternName) {
                     const start = Math.floor(Math.random() * (cols - 2));
                     const length = 2 + Math.floor(Math.random() * 2);  // 2-3 bricks wide
                     for (let i = start; i < Math.min(start + length, cols); i++) {
-                        row[i] = 1;
+                        // Random brick type for variety
+                        row[i] = brickTypes[Math.floor(Math.random() * brickTypes.length)];
                     }
                 }
                 pattern.push(row);

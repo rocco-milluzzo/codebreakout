@@ -222,14 +222,15 @@ export const LEVELS = [
         paddleWidth: 120,
         ballSpeed: 5,  // Base speed for calculations
         brickPattern: 'platforms',
-        powerupChance: 0.25,
-        powerupRarity: 1.0,
+        powerupChance: 0,            // No powerups in doodle mode
+        powerupRarity: 0,
         mechanics: ['bonus_stage'],
         bonus: {
             type: 'doodle',
             duration: 180000,        // 3 minutes
             gravity: 0.25,           // Stronger gravity for faster gameplay
             jumpForce: -12,          // Stronger jump to reach platforms
+            brickRegenDelay: 1000,   // Regenerate bricks after 1 second
             noDeathPenalty: true,
         },
     },
