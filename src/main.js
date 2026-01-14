@@ -726,9 +726,14 @@ class CodeBreakout {
                 continue;
             }
 
-            // Apply doodle mode gravity
+            // Apply doodle mode gravity and horizontal control
             if (ball.doodleMode) {
                 applyDoodleGravity(ball);
+                // Ball follows paddle position horizontally (player control)
+                const paddleCenter = this.paddle.x + this.paddle.width / 2;
+                const ballToTarget = paddleCenter - ball.x;
+                ball.dx = ballToTarget * 0.1;  // Smooth follow
+                ball.dx = Math.max(-6, Math.min(6, ball.dx));  // Cap horizontal speed
             }
 
             // Move ball
@@ -741,9 +746,12 @@ class CodeBreakout {
             }
 
             // Paddle collision (main paddle)
+            // Save dx for doodle mode (collision function modifies velocity)
+            const savedDx = ball.doodleMode ? ball.dx : 0;
             if (checkPaddleCollision(ball, this.paddle)) {
-                // Doodle mode: apply jump force
+                // Doodle mode: apply jump force, preserve horizontal movement
                 if (ball.doodleMode) {
+                    ball.dx = savedDx;  // Restore horizontal velocity
                     applyDoodleJump(ball);
                 }
                 // Magnet catch (not in doodle mode)
@@ -763,8 +771,10 @@ class CodeBreakout {
 
             // Split paddle collision (second paddle)
             if (this.paddle.isSplit && this.paddle.splitPaddle) {
+                const savedDx2 = ball.doodleMode ? ball.dx : 0;
                 if (checkPaddleCollision(ball, this.paddle.splitPaddle)) {
                     if (ball.doodleMode) {
+                        ball.dx = savedDx2;
                         applyDoodleJump(ball);
                     }
                     this.audio.playSound('paddle');
@@ -776,7 +786,10 @@ class CodeBreakout {
             if (brickHit) {
                 // Doodle mode: bounce up when landing on brick from above
                 if (ball.doodleMode && ball.dy > 0) {
+                    // Preserve horizontal velocity
+                    const savedBrickDx = ball.dx;
                     applyDoodleJump(ball);
+                    ball.dx = savedBrickDx;
                 }
                 this.handleBrickHit(brickHit.brick, brickHit.index);
                 this.audio.playSound('brick');

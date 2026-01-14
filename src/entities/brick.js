@@ -184,17 +184,18 @@ export function getBrickPattern(patternName) {
         },
 
         // BONUS: Platform pattern for doodle jump mode
+        // Creates platforms spread throughout the screen for jumping
         platforms: () => {
-            const rows = 8;
+            const rows = 12;  // More rows to cover more vertical space
             const cols = 10;
             const pattern = [];
             for (let r = 0; r < rows; r++) {
                 const row = new Array(cols).fill(0);
-                // Each row has 1-2 platform segments
-                const numPlatforms = Math.random() < 0.4 ? 2 : 1;
+                // Each row has 1-3 platform segments, varying density
+                const numPlatforms = r < 3 ? 2 : (Math.random() < 0.3 ? 3 : (Math.random() < 0.6 ? 2 : 1));
                 for (let p = 0; p < numPlatforms; p++) {
-                    const start = Math.floor(Math.random() * (cols - 3));
-                    const length = 2 + Math.floor(Math.random() * 2);
+                    const start = Math.floor(Math.random() * (cols - 2));
+                    const length = 2 + Math.floor(Math.random() * 2);  // 2-3 bricks wide
                     for (let i = start; i < Math.min(start + length, cols); i++) {
                         row[i] = 1;
                     }

@@ -219,17 +219,17 @@ export const LEVELS = [
         name: 'BOUNCE',
         color: '#e74c3c',
         description: 'Keep jumping higher!',
-        paddleWidth: 100,
-        ballSpeed: 0,  // No horizontal speed, vertical jumping
+        paddleWidth: 120,
+        ballSpeed: 5,  // Base speed for calculations
         brickPattern: 'platforms',
-        powerupChance: 0.20,
+        powerupChance: 0.25,
         powerupRarity: 1.0,
         mechanics: ['bonus_stage'],
         bonus: {
             type: 'doodle',
             duration: 180000,        // 3 minutes
-            gravity: 0.15,
-            jumpForce: -8,
+            gravity: 0.25,           // Stronger gravity for faster gameplay
+            jumpForce: -12,          // Stronger jump to reach platforms
             noDeathPenalty: true,
         },
     },

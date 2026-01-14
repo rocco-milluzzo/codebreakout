@@ -1992,7 +1992,125 @@ body {
 }
 
 .bonus-icon {
-    font-size: 1.8rem;
+    display: block;
+    width: 24px;
+    height: 24px;
+    image-rendering: pixelated;
+}
+
+/* Pixel art sword icon */
+.pixel-sword {
+    background: transparent;
+    box-shadow:
+        /* Blade */
+        10px 2px 0 #9b59b6,
+        12px 2px 0 #9b59b6,
+        8px 4px 0 #9b59b6,
+        10px 4px 0 #c39bd3,
+        12px 4px 0 #9b59b6,
+        6px 6px 0 #9b59b6,
+        8px 6px 0 #c39bd3,
+        10px 6px 0 #9b59b6,
+        4px 8px 0 #9b59b6,
+        6px 8px 0 #c39bd3,
+        8px 8px 0 #9b59b6,
+        2px 10px 0 #9b59b6,
+        4px 10px 0 #c39bd3,
+        6px 10px 0 #9b59b6,
+        /* Guard */
+        4px 12px 0 #8b4513,
+        6px 12px 0 #a0522d,
+        8px 12px 0 #8b4513,
+        /* Handle */
+        6px 14px 0 #8b4513,
+        6px 16px 0 #8b4513,
+        6px 18px 0 #8b4513,
+        6px 20px 0 #ffd700;
+}
+
+/* Pixel art shield icon */
+.pixel-shield {
+    background: transparent;
+    box-shadow:
+        6px 0 0 #27ae60,
+        8px 0 0 #27ae60,
+        10px 0 0 #27ae60,
+        12px 0 0 #27ae60,
+        4px 2px 0 #27ae60,
+        6px 2px 0 #2ecc71,
+        8px 2px 0 #2ecc71,
+        10px 2px 0 #2ecc71,
+        12px 2px 0 #2ecc71,
+        14px 2px 0 #27ae60,
+        2px 4px 0 #27ae60,
+        4px 4px 0 #2ecc71,
+        6px 4px 0 #fff,
+        8px 4px 0 #2ecc71,
+        10px 4px 0 #2ecc71,
+        12px 4px 0 #2ecc71,
+        14px 4px 0 #2ecc71,
+        16px 4px 0 #27ae60,
+        2px 6px 0 #27ae60,
+        4px 6px 0 #2ecc71,
+        6px 6px 0 #2ecc71,
+        8px 6px 0 #2ecc71,
+        10px 6px 0 #2ecc71,
+        12px 6px 0 #2ecc71,
+        14px 6px 0 #2ecc71,
+        16px 6px 0 #27ae60,
+        2px 8px 0 #27ae60,
+        4px 8px 0 #2ecc71,
+        6px 8px 0 #2ecc71,
+        8px 8px 0 #2ecc71,
+        10px 8px 0 #2ecc71,
+        12px 8px 0 #2ecc71,
+        14px 8px 0 #2ecc71,
+        16px 8px 0 #27ae60,
+        4px 10px 0 #27ae60,
+        6px 10px 0 #2ecc71,
+        8px 10px 0 #2ecc71,
+        10px 10px 0 #2ecc71,
+        12px 10px 0 #2ecc71,
+        14px 10px 0 #27ae60,
+        6px 12px 0 #27ae60,
+        8px 12px 0 #2ecc71,
+        10px 12px 0 #2ecc71,
+        12px 12px 0 #27ae60,
+        8px 14px 0 #27ae60,
+        10px 14px 0 #27ae60;
+}
+
+/* Pixel art bouncing ball icon */
+.pixel-bounce {
+    background: transparent;
+    box-shadow:
+        /* Ball */
+        8px 2px 0 #e74c3c,
+        10px 2px 0 #e74c3c,
+        6px 4px 0 #e74c3c,
+        8px 4px 0 #ff6b6b,
+        10px 4px 0 #e74c3c,
+        12px 4px 0 #e74c3c,
+        6px 6px 0 #e74c3c,
+        8px 6px 0 #e74c3c,
+        10px 6px 0 #e74c3c,
+        12px 6px 0 #c0392b,
+        8px 8px 0 #e74c3c,
+        10px 8px 0 #c0392b,
+        /* Motion lines */
+        6px 12px 0 #666,
+        12px 12px 0 #666,
+        4px 14px 0 #666,
+        14px 14px 0 #666,
+        /* Platform */
+        2px 18px 0 #666,
+        4px 18px 0 #888,
+        6px 18px 0 #888,
+        8px 18px 0 #888,
+        10px 18px 0 #888,
+        12px 18px 0 #888,
+        14px 18px 0 #888,
+        16px 18px 0 #666;
 }
 
 .bonus-name {
