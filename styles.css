@@ -515,378 +515,63 @@ body {
     padding: 0;
 }
 
-/* ===== MODERNIZED HUD - Glass Morphism Design ===== */
-
-/* HUD CSS Variables */
-#hud {
-    --hud-glass-bg: rgba(12, 12, 18, 0.85);
-    --hud-glass-border: rgba(255, 255, 255, 0.08);
-    --hud-glow-color: rgba(0, 255, 136, 0.12);
-    --hud-pill-bg: rgba(255, 255, 255, 0.04);
-    --hud-pill-border: rgba(255, 255, 255, 0.06);
-    --hud-transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-}
+/* ===== CLEAN MINIMAL HUD ===== */
 
 #hud {
     position: absolute;
     top: 0;
-    left: 50%;
-    transform: translateX(-50%);
+    left: 0;
+    right: 0;
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 0.6rem 1.2rem;
-    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    gap: 0;
     z-index: 10;
-    flex-wrap: nowrap;
-    margin-top: 0.5rem;
-    border-radius: 100px;
-
-    /* Modern glass morphism */
-    background: var(--hud-glass-bg);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid var(--hud-glass-border);
-    box-shadow:
-        0 8px 32px rgba(0, 0, 0, 0.4),
-        0 0 0 1px rgba(255, 255, 255, 0.03) inset,
-        0 2px 4px rgba(0, 0, 0, 0.2);
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.6) 0%, transparent 100%);
 }
 
-/* Animated gradient border */
-#hud::before {
-    content: '';
-    position: absolute;
-    inset: -1px;
-    border-radius: 100px;
-    padding: 1px;
-    background: linear-gradient(
-        90deg,
-        transparent 0%,
-        rgba(0, 255, 136, 0.3) 25%,
-        rgba(85, 136, 255, 0.3) 50%,
-        rgba(170, 85, 255, 0.3) 75%,
-        transparent 100%
-    );
-    background-size: 200% 100%;
-    animation: hudBorderGlow 8s linear infinite;
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
-    opacity: 0.6;
+/* Separator between HUD items */
+.hud-sep {
+    width: 1px;
+    height: 1.2rem;
+    background: rgba(255, 255, 255, 0.15);
+    margin: 0 1rem;
 }
 
-@keyframes hudBorderGlow {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
-}
-
-/* Base HUD item - Sleek minimal containers */
+/* Base HUD item */
 .hud-item {
     display: flex;
-    flex-direction: row;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.4rem 0.8rem;
-    min-width: auto;
-    border-radius: 30px;
-    background: var(--hud-pill-bg);
-    border: 1px solid var(--hud-pill-border);
-    transition: var(--hud-transition);
-    position: relative;
-}
-
-.hud-item:hover {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.12);
-}
-
-/* HUD Icon styling */
-.hud-item .icon {
-    font-size: 1.1rem;
-    opacity: 0.9;
-    filter: drop-shadow(0 0 4px currentColor);
-}
-
-/* HUD Label styling */
-.hud-item .label {
-    font-size: 0.65rem;
-    color: var(--text-secondary);
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    opacity: 0.8;
+    gap: 0.4rem;
+    padding: 0;
+    background: none;
+    border: none;
 }
 
 /* HUD Value styling */
-.hud-item span:not(.label):not(.icon) {
-    font-size: 1.1rem;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-}
-
-/* ===== SCORE DISPLAY - Large & Bold ===== */
-.hud-item.score {
-    padding: 0.6rem 1.4rem;
-    background: linear-gradient(
-        135deg,
-        rgba(0, 255, 136, 0.1) 0%,
-        var(--hud-pill-bg) 100%
-    );
-    border-color: rgba(0, 255, 136, 0.2);
-}
-
-.hud-item.score span:not(.label):not(.icon) {
-    font-size: 1.4rem;
-    font-weight: 800;
-    color: var(--accent);
-    text-shadow:
-        0 0 10px rgba(0, 255, 136, 0.5),
-        0 0 20px rgba(0, 255, 136, 0.3),
-        0 0 30px rgba(0, 255, 136, 0.1);
-    /* Counter animation feel */
-    font-variant-numeric: tabular-nums;
-    transition: all 0.15s ease-out;
-}
-
-.hud-item.score:hover span:not(.label):not(.icon) {
-    text-shadow:
-        0 0 15px rgba(0, 255, 136, 0.7),
-        0 0 30px rgba(0, 255, 136, 0.5),
-        0 0 45px rgba(0, 255, 136, 0.3);
-}
-
-.hud-item.score .icon {
-    color: var(--accent);
-}
-
-/* Score update animation class (add via JS) */
-.hud-item.score.score-updated span:not(.label):not(.icon) {
-    animation: scoreFlash 0.3s ease-out;
-}
-
-@keyframes scoreFlash {
-    0% {
-        transform: scale(1);
-    }
-    50% {
-        transform: scale(1.15);
-        text-shadow:
-            0 0 20px rgba(0, 255, 136, 0.9),
-            0 0 40px rgba(0, 255, 136, 0.6);
-    }
-    100% {
-        transform: scale(1);
-    }
-}
-
-/* ===== MULTIPLIER - Animated when active ===== */
-.hud-item.multiplier {
-    border-color: rgba(0, 255, 136, 0.15);
-    transition: var(--hud-transition);
-}
-
-.hud-item.multiplier span:not(.label):not(.icon) {
-    color: var(--accent);
-    font-weight: 700;
-    transition: all 0.2s ease;
-}
-
-.hud-item.multiplier .icon {
-    color: var(--accent);
-}
-
-/* Multiplier intensity levels */
-.hud-item.multiplier[data-multiplier="1"] {
-    border-color: var(--hud-pill-border);
-}
-
-.hud-item.multiplier[data-multiplier="1"] span:not(.label):not(.icon) {
-    color: var(--text-secondary);
-    text-shadow: none;
-}
-
-.hud-item.multiplier[data-multiplier="2"] {
-    background: linear-gradient(135deg, rgba(0, 255, 136, 0.1) 0%, var(--hud-pill-bg) 100%);
-    border-color: rgba(0, 255, 136, 0.25);
-    animation: multiplierPulse 2s ease-in-out infinite;
-}
-
-.hud-item.multiplier[data-multiplier="2"] span:not(.label):not(.icon) {
-    color: var(--accent);
-    text-shadow: 0 0 8px rgba(0, 255, 136, 0.5);
-}
-
-.hud-item.multiplier[data-multiplier="3"] {
-    background: linear-gradient(135deg, rgba(0, 255, 136, 0.15) 0%, var(--hud-pill-bg) 100%);
-    border-color: rgba(0, 255, 136, 0.35);
-    animation: multiplierPulse 1.5s ease-in-out infinite;
-}
-
-.hud-item.multiplier[data-multiplier="3"] span:not(.label):not(.icon) {
-    color: #00ffaa;
-    text-shadow: 0 0 12px rgba(0, 255, 136, 0.7);
-}
-
-.hud-item.multiplier[data-multiplier="4"],
-.hud-item.multiplier.max-multiplier {
-    background: linear-gradient(135deg, rgba(0, 255, 136, 0.2) 0%, rgba(170, 85, 255, 0.1) 100%);
-    border-color: rgba(0, 255, 136, 0.5);
-    animation: multiplierPulseMax 1s ease-in-out infinite;
-}
-
-.hud-item.multiplier[data-multiplier="4"] span:not(.label):not(.icon),
-.hud-item.multiplier.max-multiplier span:not(.label):not(.icon) {
-    color: #33ffbb;
-    text-shadow:
-        0 0 15px rgba(0, 255, 136, 0.9),
-        0 0 30px rgba(0, 255, 136, 0.5);
-}
-
-@keyframes multiplierPulse {
-    0%, 100% {
-        box-shadow: 0 0 10px rgba(0, 255, 136, 0.1);
-    }
-    50% {
-        box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
-    }
-}
-
-@keyframes multiplierPulseMax {
-    0%, 100% {
-        box-shadow:
-            0 0 15px rgba(0, 255, 136, 0.3),
-            0 0 30px rgba(0, 255, 136, 0.1);
-        transform: scale(1);
-    }
-    50% {
-        box-shadow:
-            0 0 25px rgba(0, 255, 136, 0.5),
-            0 0 50px rgba(0, 255, 136, 0.2);
-        transform: scale(1.02);
-    }
-}
-
-/* ===== LIVES - Heart icons with animation ===== */
-.hud-item.lives {
-    gap: 0.4rem;
-    padding: 0.5rem 1rem;
-}
-
-.hud-item.lives .icon {
-    color: var(--danger);
-    filter: drop-shadow(0 0 6px rgba(255, 68, 85, 0.5));
-}
-
-.hud-item.lives .hearts {
-    display: flex;
-    gap: 0.3rem;
-}
-
-.hud-item.lives .heart {
+.hud-item span {
     font-size: 1rem;
-    color: var(--danger);
-    filter: drop-shadow(0 0 4px rgba(255, 68, 85, 0.6));
-    transition: all 0.3s ease;
-    animation: heartBeat 2s ease-in-out infinite;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: rgba(255, 255, 255, 0.9);
 }
 
-.hud-item.lives .heart:nth-child(2) {
-    animation-delay: 0.3s;
-}
-
-.hud-item.lives .heart:nth-child(3) {
-    animation-delay: 0.6s;
-}
-
-.hud-item.lives .heart.lost {
-    color: var(--text-secondary);
-    opacity: 0.3;
-    filter: none;
-    animation: none;
-}
-
-/* Heart lost animation class (add via JS) */
-.hud-item.lives .heart.losing {
-    animation: heartLose 0.5s ease-out forwards;
-}
-
-@keyframes heartBeat {
-    0%, 100% {
-        transform: scale(1);
-    }
-    15% {
-        transform: scale(1.1);
-    }
-    30% {
-        transform: scale(1);
-    }
-    45% {
-        transform: scale(1.05);
-    }
-    60% {
-        transform: scale(1);
-    }
-}
-
-@keyframes heartLose {
-    0% {
-        transform: scale(1);
-        opacity: 1;
-    }
-    50% {
-        transform: scale(1.3);
-        opacity: 0.5;
-    }
-    100% {
-        transform: scale(0.8);
-        opacity: 0.3;
-        color: var(--text-secondary);
-        filter: none;
-    }
-}
-
-/* ===== LEVEL INDICATOR - Badge style ===== */
-.hud-item.level {
-    padding: 0.5rem 1rem;
-    border-radius: 50px;
-    background: linear-gradient(
-        135deg,
-        var(--hud-pill-bg) 0%,
-        rgba(85, 136, 255, 0.1) 100%
-    );
-    border-color: var(--level-color, var(--blue));
-    border-width: 1px;
-    position: relative;
-}
-
-.hud-item.level::after {
-    content: '';
-    position: absolute;
-    inset: -1px;
-    border-radius: 50px;
-    background: linear-gradient(
-        135deg,
-        var(--level-color, var(--blue)) 0%,
-        transparent 50%
-    );
-    opacity: 0.15;
-    pointer-events: none;
-    z-index: -1;
-}
-
-.hud-item.level span:not(.label):not(.icon) {
-    color: var(--level-color, var(--blue));
+/* ===== SCORE ===== */
+.hud-item.score span {
+    font-size: 1.2rem;
     font-weight: 700;
-    text-shadow: 0 0 8px var(--level-color, var(--blue));
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
 }
 
-.hud-item.level .icon {
+/* ===== LEVEL ===== */
+.hud-item.level span {
     color: var(--level-color, var(--blue));
+    font-weight: 600;
 }
 
-/* Level color themes - apply via JS by setting --level-color */
+/* Level color themes */
 .hud-item.level.level-html { --level-color: var(--html); }
 .hud-item.level.level-css { --level-color: var(--css); }
 .hud-item.level.level-javascript { --level-color: var(--javascript); }
@@ -903,8 +588,34 @@ body {
 .hud-item.level.level-haskell { --level-color: var(--haskell); }
 .hud-item.level.level-assembly { --level-color: var(--assembly); }
 
+/* ===== LIVES ===== */
+.hud-item.lives .hearts {
+    display: flex;
+    gap: 0.25rem;
+    font-size: 0.9rem;
+}
+
+/* ===== MULTIPLIER ===== */
+.hud-item.multiplier span {
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 600;
+    transition: color 0.2s ease;
+}
+
+.hud-item.multiplier.active span {
+    color: var(--accent);
+}
+
 #pause-btn {
-    font-size: 1.2rem;
+    position: absolute;
+    right: 1rem;
+    font-size: 1rem;
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+}
+
+#pause-btn:hover {
+    opacity: 1;
 }
 
 #game-canvas {
@@ -919,15 +630,19 @@ body {
     left: 50%;
     transform: translateX(-50%);
     color: var(--text-secondary);
-    font-size: 0.9rem;
-    animation: pulse 1.5s ease-in-out infinite;
+    font-size: 0.85rem;
     text-align: center;
-    padding: 8px 16px;
-    background: rgba(10, 10, 15, 0.8);
-    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 4px;
     z-index: 50;
     pointer-events: none;
     white-space: nowrap;
+    opacity: 0.8;
+}
+
+.hint.hidden {
+    display: none;
 }
 
 @keyframes pulse {
@@ -1594,9 +1309,11 @@ body {
     }
 
     #hud {
-        padding: 0.5rem 1rem;
-        gap: 0.4rem;
-        margin-top: 0.4rem;
+        padding: 0.5rem 0.75rem;
+    }
+
+    .hud-sep {
+        margin: 0 0.75rem;
     }
 }
 
@@ -1611,36 +1328,24 @@ body {
     }
 
     #hud {
-        padding: 0.4rem 0.8rem;
-        gap: 0.3rem;
-        margin-top: 0.3rem;
-        max-width: 98vw;
-        flex-wrap: nowrap;
+        padding: 0.5rem;
     }
 
-    .hud-item {
-        padding: 0.25rem 0.5rem;
-        gap: 0.25rem;
-        border-radius: 20px;
+    .hud-sep {
+        margin: 0 0.5rem;
+        height: 1rem;
     }
 
-    .hud-item .label {
-        display: none; /* Hide labels on mobile */
-    }
-
-    .hud-item span:not(.label):not(.icon) {
+    .hud-item span {
         font-size: 0.85rem;
     }
 
-    .hud-item.score span:not(.label):not(.icon) {
+    .hud-item.score span {
         font-size: 1rem;
     }
 
-    .hud-item.lives .heart {
-        font-size: 0.8rem;
-    }
-
     .hud-item.lives .hearts {
+        font-size: 0.75rem;
         gap: 0.15rem;
     }
 
@@ -1734,34 +1439,29 @@ body {
 
     /* Compact HUD for small screens */
     #hud {
-        padding: 0.4rem 0.5rem;
-        gap: 0.3rem;
+        padding: 0.4rem;
     }
 
-    .hud-item {
-        padding: 0.25rem 0.5rem;
-        border-radius: 30px;
+    .hud-sep {
+        margin: 0 0.4rem;
+        height: 0.9rem;
     }
 
-    .hud-item .icon {
-        font-size: 0.85rem;
+    .hud-item span {
+        font-size: 0.8rem;
     }
 
-    .hud-item span:not(.label):not(.icon) {
-        font-size: 0.85rem;
+    .hud-item.score span {
+        font-size: 0.9rem;
     }
 
-    .hud-item.score span:not(.label):not(.icon) {
-        font-size: 1rem;
-    }
-
-    .hud-item.lives .heart {
-        font-size: 0.75rem;
+    .hud-item.lives .hearts {
+        font-size: 0.7rem;
     }
 
     #pause-btn {
-        font-size: 1rem;
-        padding: 0.3rem;
+        font-size: 0.9rem;
+        right: 0.5rem;
     }
 
     .btn {
@@ -1861,23 +1561,24 @@ body {
     }
 
     #hud {
-        padding: 0.3rem 0.4rem;
+        padding: 0.3rem;
     }
 
-    .hud-item {
-        padding: 0.2rem 0.4rem;
+    .hud-sep {
+        margin: 0 0.3rem;
+        height: 0.8rem;
     }
 
-    .hud-item span:not(.label):not(.icon) {
-        font-size: 0.75rem;
+    .hud-item span {
+        font-size: 0.7rem;
     }
 
-    .hud-item.score span:not(.label):not(.icon) {
-        font-size: 0.9rem;
+    .hud-item.score span {
+        font-size: 0.8rem;
     }
 
-    .hud-item.lives .heart {
-        font-size: 0.65rem;
+    .hud-item.lives .hearts {
+        font-size: 0.6rem;
     }
 
     .btn {
@@ -1907,12 +1608,10 @@ body {
 @media (max-height: 500px) and (orientation: landscape) {
     #hud {
         padding: 0.3rem 0.5rem;
-        position: fixed;
-        top: 0;
-        left: 50%;
-        transform: translateX(-50%);
-        width: auto;
-        max-width: 90vw;
+    }
+
+    .hud-sep {
+        margin: 0 0.4rem;
     }
 
     #game-canvas {

@@ -45,27 +45,26 @@
         <!-- Game Screen -->
         <div id="game-screen" class="screen hidden">
             <div id="hud">
-                <div class="hud-item score-item">
-                    <span class="label">SCORE</span>
+                <div class="hud-item score">
                     <span id="score">0</span>
                 </div>
-                <div class="hud-item level-item">
-                    <span class="label">LEVEL</span>
+                <div class="hud-sep"></div>
+                <div class="hud-item level">
                     <span id="level-name">HTML</span>
                 </div>
-                <div class="hud-item lives-item">
-                    <span class="label">LIVES</span>
+                <div class="hud-sep"></div>
+                <div class="hud-item lives">
                     <span id="lives" class="hearts">❤️❤️❤️</span>
                 </div>
+                <div class="hud-sep"></div>
                 <div class="hud-item multiplier">
-                    <span class="label">COMBO</span>
-                    <span id="multiplier">x1.00</span>
+                    <span id="multiplier">x1</span>
                 </div>
-                <button id="pause-btn" class="icon-btn">⏸️</button>
+                <button id="pause-btn" class="icon-btn">⏸</button>
             </div>
             <canvas id="game-canvas"></canvas>
             <div id="active-powerups"></div>
-            <div id="launch-hint" class="hint pulse-effect">Press SPACE or TAP to launch</div>
+            <div id="launch-hint" class="hint hidden">Press SPACE or tap to launch</div>
         </div>
 
         <!-- Pause Screen -->
