@@ -20,7 +20,7 @@ export const CONFIG = {
     BALL_MAX_SPEED: 12,
     BALL_SPEED_INCREMENT: 0.1,
     MIN_BOUNCE_ANGLE: Math.PI / 6, // 30 degrees from horizontal
-    MOBILE_SPEED_MULTIPLIER: 1.4, // Ball moves faster on mobile for better feel
+    MOBILE_SPEED_MULTIPLIER: 2, // Ball moves faster on mobile for better feel
 
     // Bricks
     BRICK_ROWS: 6,
