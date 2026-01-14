@@ -15,8 +15,8 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 // Valid level names (must match frontend LEVELS array)
 const VALID_LEVELS = [
-    'HTML', 'CSS', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Java', 'C#',
-    'TypeScript', 'C', 'C++', 'Go', 'Rust', 'Haskell', 'Assembly'
+    'HTML', 'CSS', 'JavaScript', 'Python', 'PHP', 'ROGUELIKE', 'Ruby', 'Java', 'C#',
+    'TypeScript', 'C', 'ZEN MODE', 'C++', 'Go', 'Rust', 'Haskell', 'BOUNCE', 'Assembly'
 ];
 
 // Database connection

@@ -65,8 +65,27 @@ export const LEVELS = [
         powerupRarity: 0.8,
         mechanics: ['speed_bonus'],
     },
+    // ========== BONUS STAGE 1: ROGUELIKE ==========
     {
         id: 6,
+        name: 'ROGUELIKE',
+        color: '#9b59b6',
+        description: 'Survive 5 minutes!',
+        paddleWidth: 100,
+        ballSpeed: 5,
+        brickPattern: 'random',
+        powerupChance: 0.30,
+        powerupRarity: 1.0,
+        mechanics: ['bonus_stage'],
+        bonus: {
+            type: 'roguelike',
+            duration: 300000,        // 5 minutes
+            brickRegenDelay: 10000,  // Bricks respawn after 10 seconds
+            noDeathPenalty: true,
+        },
+    },
+    {
+        id: 7,
         name: 'Ruby',
         color: '#cc342d',
         description: 'Combo master',
@@ -78,7 +97,7 @@ export const LEVELS = [
         mechanics: ['combo_boost'],
     },
     {
-        id: 7,
+        id: 8,
         name: 'Java',
         color: '#007396',
         description: 'Heavy and robust',
@@ -90,7 +109,7 @@ export const LEVELS = [
         mechanics: ['strong_bricks', 'hazard_bricks'],
     },
     {
-        id: 8,
+        id: 9,
         name: 'C#',
         color: '#68217a',
         description: 'Multi-threaded chaos',
@@ -102,7 +121,7 @@ export const LEVELS = [
         mechanics: ['multi_ball_spawns'],
     },
     {
-        id: 9,
+        id: 10,
         name: 'TypeScript',
         color: '#3178c6',
         description: 'Type-safe precision',
@@ -114,7 +133,7 @@ export const LEVELS = [
         mechanics: ['penalty_miss_powerup'],
     },
     {
-        id: 10,
+        id: 11,
         name: 'C',
         color: '#555555',
         description: 'Raw power',
@@ -125,8 +144,29 @@ export const LEVELS = [
         powerupRarity: 0.55,
         mechanics: ['strong_bricks'],
     },
+    // ========== BONUS STAGE 2: RELAX ==========
     {
-        id: 11,
+        id: 12,
+        name: 'ZEN MODE',
+        color: '#27ae60',
+        description: 'Relax and rack up points!',
+        paddleWidth: 120,
+        ballSpeed: 4,
+        brickPattern: 'random',
+        powerupChance: 0.40,
+        powerupRarity: 1.0,
+        mechanics: ['bonus_stage'],
+        bonus: {
+            type: 'relax',
+            duration: 180000,        // 3 minutes
+            brickRegenDelay: 2000,   // Bricks respawn every 2 seconds
+            permanentShield: true,
+            initialBalls: 10,
+            noDeathPenalty: true,
+        },
+    },
+    {
+        id: 13,
         name: 'C++',
         color: '#00599c',
         description: 'Complex machinery',
@@ -138,7 +178,7 @@ export const LEVELS = [
         mechanics: ['moving_bricks', 'strong_bricks'],
     },
     {
-        id: 12,
+        id: 14,
         name: 'Go',
         color: '#00add8',
         description: 'Concurrent goroutines',
@@ -150,7 +190,7 @@ export const LEVELS = [
         mechanics: ['split_ball'],
     },
     {
-        id: 13,
+        id: 15,
         name: 'Rust',
         color: '#dea584',
         description: 'Borrow checker',
@@ -162,7 +202,7 @@ export const LEVELS = [
         mechanics: ['limited_boost', 'strong_bricks'],
     },
     {
-        id: 14,
+        id: 16,
         name: 'Haskell',
         color: '#5e5086',
         description: 'Monadic portals',
@@ -173,8 +213,28 @@ export const LEVELS = [
         powerupRarity: 0.35,
         mechanics: ['portal_bricks', 'strong_bricks'],
     },
+    // ========== BONUS STAGE 3: DOODLE JUMP ==========
     {
-        id: 15,
+        id: 17,
+        name: 'BOUNCE',
+        color: '#e74c3c',
+        description: 'Keep jumping higher!',
+        paddleWidth: 100,
+        ballSpeed: 0,  // No horizontal speed, vertical jumping
+        brickPattern: 'platforms',
+        powerupChance: 0.20,
+        powerupRarity: 1.0,
+        mechanics: ['bonus_stage'],
+        bonus: {
+            type: 'doodle',
+            duration: 180000,        // 3 minutes
+            gravity: 0.15,
+            jumpForce: -8,
+            noDeathPenalty: true,
+        },
+    },
+    {
+        id: 18,
         name: 'Assembly',
         color: '#00ff00',
         description: 'Maximum performance',

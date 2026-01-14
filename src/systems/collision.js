@@ -109,6 +109,8 @@ export function applyBrickBounce(ball, side) {
 export function checkBrickCollisions(ball, bricks) {
     for (let i = bricks.length - 1; i >= 0; i--) {
         const brick = bricks[i];
+        // Skip destroyed bricks (for bonus level regeneration)
+        if (brick.destroyed) continue;
         const collision = checkBrickCollision(ball, brick);
 
         if (collision.hit) {

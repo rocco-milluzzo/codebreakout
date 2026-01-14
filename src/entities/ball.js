@@ -26,7 +26,44 @@ export function createBall(x, y, speed, stuck = true) {
         stuck,
         stuckOffset: 0,  // Offset from paddle center when caught by magnet
         fireball: false,  // When true, ball penetrates 1-hit bricks
+        doodleMode: false,  // When true, ball has gravity and platform jumping
+        gravity: 0,  // Gravity value for doodle mode
+        jumpForce: 0,  // Jump force for doodle mode
     };
+}
+
+/**
+ * Enable doodle jump mode on ball
+ * @param {object} ball - Ball object
+ * @param {number} gravity - Gravity acceleration
+ * @param {number} jumpForce - Jump force (negative for upward)
+ */
+export function enableDoodleMode(ball, gravity, jumpForce) {
+    ball.doodleMode = true;
+    ball.gravity = gravity;
+    ball.jumpForce = jumpForce;
+}
+
+/**
+ * Apply doodle mode physics (gravity)
+ * @param {object} ball - Ball object
+ */
+export function applyDoodleGravity(ball) {
+    if (ball.doodleMode && !ball.stuck) {
+        ball.dy += ball.gravity;
+        // Cap falling speed
+        ball.dy = Math.min(ball.dy, 12);
+    }
+}
+
+/**
+ * Apply doodle jump
+ * @param {object} ball - Ball object
+ */
+export function applyDoodleJump(ball) {
+    if (ball.doodleMode) {
+        ball.dy = ball.jumpForce;
+    }
 }
 
 /**

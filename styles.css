@@ -606,6 +606,28 @@ body {
     color: var(--accent);
 }
 
+/* ===== BONUS TIMER ===== */
+.hud-item.bonus-timer span {
+    color: #f39c12;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.hud-item.bonus-timer.low-time span {
+    color: #e74c3c;
+    animation: timerPulse 0.5s ease-in-out infinite;
+}
+
+@keyframes timerPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.bonus-timer-sep.hidden,
+.bonus-timer.hidden {
+    display: none;
+}
+
 #pause-btn {
     position: absolute;
     right: 1rem;

@@ -439,6 +439,9 @@ export function drawBricks(ctx, bricks) {
     updateAnimationTime();
 
     for (const brick of bricks) {
+        // Skip destroyed bricks (for bonus level regeneration)
+        if (brick.destroyed) continue;
+
         const { x, y, width, height, color, type, hits, maxHits } = brick;
         const hitsRemaining = hits;
 

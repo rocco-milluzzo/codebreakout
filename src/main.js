@@ -14,7 +14,7 @@ import { GameState } from './state.js';
 
 // Entities
 import { createPaddle, updatePaddle, setPaddleWidthMultiplier, resetPaddleWidth, enableMagnet, useMagnetCatch, enableInvertedControls, disableInvertedControls, enableSplitPaddle, disableSplitPaddle } from './entities/paddle.js';
-import { createBallOnPaddle, launchBall, updateBallPosition, checkWallCollision, isBallOutOfBounds, bounceOffShield, updateBallVelocity, setBallSpeedMultiplier, resetBallSpeed, createMultiBalls, syncBallWithPaddle, enableFireball, disableFireball } from './entities/ball.js';
+import { createBallOnPaddle, launchBall, updateBallPosition, checkWallCollision, isBallOutOfBounds, bounceOffShield, updateBallVelocity, setBallSpeedMultiplier, resetBallSpeed, createMultiBalls, syncBallWithPaddle, enableFireball, disableFireball, enableDoodleMode, applyDoodleGravity, applyDoodleJump } from './entities/ball.js';
 import { createBricks, updateMovingBricks, hitBrick, findAdjacentBricks, getBrickCenter } from './entities/brick.js';
 import { spawnPositivePowerup, spawnNegativePowerup, updatePowerups as updatePowerupEntities, fireLasers, updateLaserPosition, isLaserOffScreen, checkLaserBrickCollision } from './entities/powerup.js';
 
@@ -171,6 +171,8 @@ class CodeBreakout {
         // Destroy bricks in column (tolerance of 40px)
         for (let i = this.bricks.length - 1; i >= 0; i--) {
             const brick = this.bricks[i];
+            // Skip destroyed bricks (for bonus level regeneration)
+            if (brick.destroyed) continue;
             const brickCenterX = brick.x + brick.width / 2;
             if (Math.abs(brickCenterX - targetX) < 40 && brick.type !== 'UNBREAKABLE') {
                 brick.hits = brick.maxHits; // Force destroy
@@ -199,6 +201,8 @@ class CodeBreakout {
         // Destroy bricks in row (tolerance of 20px)
         for (let i = this.bricks.length - 1; i >= 0; i--) {
             const brick = this.bricks[i];
+            // Skip destroyed bricks (for bonus level regeneration)
+            if (brick.destroyed) continue;
             const brickCenterY = brick.y + brick.height / 2;
             if (Math.abs(brickCenterY - targetY) < 20 && brick.type !== 'UNBREAKABLE') {
                 brick.hits = brick.maxHits; // Force destroy
@@ -316,18 +320,61 @@ class CodeBreakout {
         this.ballTrail = [];
         this.shield = null;
         this.state.activePowerups = {};
+        this.state.destroyedBricks = [];
+
+        // Check if bonus level
+        const isBonus = levelData.bonus !== undefined;
+        this.state.bonusActive = isBonus;
 
         // Create paddle
         this.paddle = createPaddle(levelData.paddleWidth);
 
-        // Create ball
-        this.balls = [createBallOnPaddle(this.paddle, levelData.ballSpeed)];
+        // Create ball(s)
+        if (isBonus && levelData.bonus.initialBalls > 1) {
+            // Multiple balls for relax mode
+            this.balls = [];
+            for (let i = 0; i < levelData.bonus.initialBalls; i++) {
+                const ball = createBallOnPaddle(this.paddle, levelData.ballSpeed);
+                ball.stuckOffset = (i - levelData.bonus.initialBalls / 2) * 15;
+                this.balls.push(ball);
+            }
+        } else {
+            this.balls = [createBallOnPaddle(this.paddle, levelData.ballSpeed)];
+        }
 
         // Create bricks
         const { bricks, portalPairs, totalBreakable } = createBricks(levelData);
         this.bricks = bricks;
         this.portalPairs = portalPairs;
         this.state.totalBricks = totalBreakable;
+
+        // Bonus level setup
+        const timerEl = document.querySelector('.bonus-timer');
+        const timerSep = document.querySelector('.bonus-timer-sep');
+
+        if (isBonus) {
+            this.state.bonusEndTime = Date.now() + levelData.bonus.duration;
+
+            // Show timer
+            timerEl.classList.remove('hidden');
+            timerSep.classList.remove('hidden');
+
+            // Permanent shield for relax mode
+            if (levelData.bonus.permanentShield) {
+                this.shield = { permanent: true };
+            }
+
+            // Doodle jump mode
+            if (levelData.bonus.type === 'doodle') {
+                for (const ball of this.balls) {
+                    enableDoodleMode(ball, levelData.bonus.gravity, levelData.bonus.jumpForce);
+                }
+            }
+        } else {
+            this.state.bonusEndTime = 0;
+            timerEl.classList.add('hidden');
+            timerSep.classList.add('hidden');
+        }
 
         // Update UI
         this.updateUI();
@@ -345,11 +392,18 @@ class CodeBreakout {
 
         // Launch all stuck balls
         for (const ball of stuckBalls) {
-            launchBall(ball);
+            // Doodle mode: special launch with small horizontal movement
+            if (ball.doodleMode) {
+                ball.stuck = false;
+                ball.dx = (Math.random() - 0.5) * 3;  // Small random horizontal
+                ball.dy = ball.jumpForce;  // Initial jump up
+            } else {
+                launchBall(ball);
 
-            // Handle magnet release for each ball
-            if (this.paddle.hasMagnet && this.paddle.magnetCatches > 0) {
-                useMagnetCatch(this.paddle);
+                // Handle magnet release for each ball
+                if (this.paddle.hasMagnet && this.paddle.magnetCatches > 0) {
+                    useMagnetCatch(this.paddle);
+                }
             }
         }
 
@@ -389,6 +443,15 @@ class CodeBreakout {
     }
 
     loseLife() {
+        const levelData = LEVELS[this.state.level];
+
+        // Bonus levels: no death penalty, go to next level
+        if (levelData.bonus && levelData.bonus.noDeathPenalty) {
+            this.spawnFloatingText(CONFIG.CANVAS_WIDTH / 2, CONFIG.CANVAS_HEIGHT / 2, 'BONUS OVER!', levelData.color);
+            this.nextLevel();
+            return;
+        }
+
         const gameOver = this.state.loseLife();
         this.updateUI();
 
@@ -494,7 +557,62 @@ class CodeBreakout {
         this.updateBallTrail();
         this.updatePowerupTimers();
         this.updateScreenShake();
+        this.updateBonusLevel();
+        this.checkExtraLife();
         this.checkLevelComplete();
+    }
+
+    updateBonusLevel() {
+        const levelData = LEVELS[this.state.level];
+        if (!levelData.bonus) return;
+
+        const now = Date.now();
+
+        // Update countdown timer
+        const remaining = Math.max(0, this.state.bonusEndTime - now);
+        const minutes = Math.floor(remaining / 60000);
+        const seconds = Math.floor((remaining % 60000) / 1000);
+        const timerEl = document.getElementById('bonus-countdown');
+        timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+        // Low time warning
+        const timerContainer = document.querySelector('.bonus-timer');
+        if (remaining < 30000) {
+            timerContainer.classList.add('low-time');
+        } else {
+            timerContainer.classList.remove('low-time');
+        }
+
+        // Brick regeneration
+        if (levelData.bonus.brickRegenDelay && this.state.destroyedBricks.length > 0) {
+            const bricksToRegen = [];
+            for (let i = this.state.destroyedBricks.length - 1; i >= 0; i--) {
+                const entry = this.state.destroyedBricks[i];
+                if (now - entry.time >= levelData.bonus.brickRegenDelay) {
+                    bricksToRegen.push(entry);
+                    this.state.destroyedBricks.splice(i, 1);
+                }
+            }
+
+            // Regenerate bricks
+            for (const entry of bricksToRegen) {
+                entry.brick.hits = 0;  // Reset hits to 0 (fresh brick)
+                entry.brick.destroyed = false;
+            }
+        }
+
+        // Restore permanent shield if lost
+        if (levelData.bonus.permanentShield && !this.shield) {
+            this.shield = { permanent: true };
+        }
+    }
+
+    checkExtraLife() {
+        if (this.state.checkExtraLife()) {
+            this.audio.playSound('powerup');
+            this.spawnFloatingText(CONFIG.CANVAS_WIDTH / 2, 100, '+1 LIFE!', '#ff4455');
+            this.updateUI();
+        }
     }
 
     updatePaddleEntity() {
@@ -515,6 +633,11 @@ class CodeBreakout {
                 continue;
             }
 
+            // Apply doodle mode gravity
+            if (ball.doodleMode) {
+                applyDoodleGravity(ball);
+            }
+
             // Move ball
             updateBallPosition(ball);
 
@@ -526,8 +649,12 @@ class CodeBreakout {
 
             // Paddle collision (main paddle)
             if (checkPaddleCollision(ball, this.paddle)) {
-                // Magnet catch
-                if (this.paddle.hasMagnet && this.paddle.magnetCatches > 0) {
+                // Doodle mode: apply jump force
+                if (ball.doodleMode) {
+                    applyDoodleJump(ball);
+                }
+                // Magnet catch (not in doodle mode)
+                else if (this.paddle.hasMagnet && this.paddle.magnetCatches > 0) {
                     // Calculate offset from paddle center where ball hit
                     const paddleCenter = this.paddle.x + this.paddle.width / 2;
                     ball.stuckOffset = ball.x - paddleCenter;
@@ -544,6 +671,9 @@ class CodeBreakout {
             // Split paddle collision (second paddle)
             if (this.paddle.isSplit && this.paddle.splitPaddle) {
                 if (checkPaddleCollision(ball, this.paddle.splitPaddle)) {
+                    if (ball.doodleMode) {
+                        applyDoodleJump(ball);
+                    }
                     this.audio.playSound('paddle');
                 }
             }
@@ -551,6 +681,10 @@ class CodeBreakout {
             // Brick collisions
             const brickHit = checkBrickCollisions(ball, this.bricks);
             if (brickHit) {
+                // Doodle mode: bounce up when landing on brick from above
+                if (ball.doodleMode && ball.dy > 0) {
+                    applyDoodleJump(ball);
+                }
                 this.handleBrickHit(brickHit.brick, brickHit.index);
                 this.audio.playSound('brick');
             }
@@ -560,7 +694,10 @@ class CodeBreakout {
                 if (this.shield) {
                     // Shield saves the ball
                     bounceOffShield(ball);
-                    this.shield = null;
+                    // Don't consume permanent shield
+                    if (!this.shield.permanent) {
+                        this.shield = null;
+                    }
                     this.audio.playSound('shield');
                 } else {
                     continue; // Ball lost
@@ -624,8 +761,18 @@ class CodeBreakout {
             this.powerups.push(spawnNegativePowerup(center.x, center.y));
         }
 
-        // Remove brick
-        this.bricks.splice(index, 1);
+        // Bonus level: track for regeneration instead of removing
+        if (levelData.bonus && levelData.bonus.brickRegenDelay) {
+            brick.destroyed = true;
+            this.state.destroyedBricks.push({
+                brick,
+                originalHits: BRICK_TYPES[brick.type].hits,
+                time: Date.now(),
+            });
+        } else {
+            // Normal level: remove brick
+            this.bricks.splice(index, 1);
+        }
 
         this.updateUI();
     }
@@ -882,6 +1029,8 @@ class CodeBreakout {
             let hitBrick = false;
             for (let j = this.bricks.length - 1; j >= 0; j--) {
                 const brick = this.bricks[j];
+                // Skip destroyed bricks (for bonus level regeneration)
+                if (brick.destroyed) continue;
                 if (checkLaserBrickCollision(laser, brick)) {
                     this.handleBrickHit(brick, j);
                     hitBrick = true;
@@ -1030,7 +1179,18 @@ class CodeBreakout {
     }
 
     checkLevelComplete() {
-        const breakableBricks = this.bricks.filter(b => b.type !== 'UNBREAKABLE');
+        const levelData = LEVELS[this.state.level];
+
+        // Bonus levels: time-based completion
+        if (levelData.bonus) {
+            if (Date.now() >= this.state.bonusEndTime) {
+                this.levelComplete();
+            }
+            return;
+        }
+
+        // Normal levels: all breakable bricks destroyed
+        const breakableBricks = this.bricks.filter(b => b.type !== 'UNBREAKABLE' && !b.destroyed);
         if (breakableBricks.length === 0) {
             this.levelComplete();
         }

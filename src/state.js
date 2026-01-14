@@ -26,6 +26,12 @@ export class GameState {
         this.soundEnabled = true;
         this.activePowerups = {};
         this.scoreSubmitted = false;
+
+        // Bonus level state
+        this.bonusEndTime = 0;
+        this.bonusActive = false;
+        this.lastExtraLifeScore = 0;  // Track score for 10k extra life
+        this.destroyedBricks = [];     // Track destroyed bricks for regeneration
     }
 
     /**
@@ -37,6 +43,23 @@ export class GameState {
         const actualPoints = Math.floor(points * this.multiplier);
         this.score += actualPoints;
         return actualPoints;
+    }
+
+    /**
+     * Check if player earned an extra life (every 10k points)
+     * @returns {boolean} True if extra life awarded
+     */
+    checkExtraLife() {
+        const threshold = 10000;
+        const currentMilestone = Math.floor(this.score / threshold);
+        const lastMilestone = Math.floor(this.lastExtraLifeScore / threshold);
+
+        if (currentMilestone > lastMilestone && this.lives < CONFIG.MAX_LIVES) {
+            this.lives++;
+            this.lastExtraLifeScore = this.score;
+            return true;
+        }
+        return false;
     }
 
     /**

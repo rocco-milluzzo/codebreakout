@@ -161,6 +161,48 @@ export function getBrickPattern(patternName) {
             [2, 3, 2, 3, 2, 2, 3, 2, 3, 2],
             [3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
         ],
+
+        // BONUS: Random pattern - regenerates differently each time
+        random: () => {
+            const rows = 6;
+            const cols = 10;
+            const pattern = [];
+            for (let r = 0; r < rows; r++) {
+                const row = [];
+                for (let c = 0; c < cols; c++) {
+                    // 70% chance of brick, mix of types
+                    if (Math.random() < 0.7) {
+                        const types = [1, 1, 1, 2, 2, 6]; // Weighted: more standard bricks
+                        row.push(types[Math.floor(Math.random() * types.length)]);
+                    } else {
+                        row.push(0);
+                    }
+                }
+                pattern.push(row);
+            }
+            return pattern;
+        },
+
+        // BONUS: Platform pattern for doodle jump mode
+        platforms: () => {
+            const rows = 8;
+            const cols = 10;
+            const pattern = [];
+            for (let r = 0; r < rows; r++) {
+                const row = new Array(cols).fill(0);
+                // Each row has 1-2 platform segments
+                const numPlatforms = Math.random() < 0.4 ? 2 : 1;
+                for (let p = 0; p < numPlatforms; p++) {
+                    const start = Math.floor(Math.random() * (cols - 3));
+                    const length = 2 + Math.floor(Math.random() * 2);
+                    for (let i = start; i < Math.min(start + length, cols); i++) {
+                        row[i] = 1;
+                    }
+                }
+                pattern.push(row);
+            }
+            return pattern;
+        },
     };
 
     return (patterns[patternName] || patterns.simple)();
@@ -222,6 +264,8 @@ export function createBricks(levelData) {
  */
 export function updateMovingBricks(bricks) {
     for (const brick of bricks) {
+        // Skip destroyed bricks (for bonus level regeneration)
+        if (brick.destroyed) continue;
         if (brick.moving) {
             brick.x += brick.moveDir * brick.moveSpeed;
 
@@ -254,6 +298,8 @@ export function hitBrick(brick) {
  */
 export function findAdjacentBricks(brick, allBricks) {
     return allBricks.filter(b => {
+        // Skip destroyed bricks (for bonus level regeneration)
+        if (b.destroyed) return false;
         const dx = Math.abs((b.x + b.width / 2) - (brick.x + brick.width / 2));
         const dy = Math.abs((b.y + b.height / 2) - (brick.y + brick.height / 2));
         return dx < CONFIG.BRICK_WIDTH * 1.5 && dy < CONFIG.BRICK_HEIGHT * 1.5 && b !== brick;
