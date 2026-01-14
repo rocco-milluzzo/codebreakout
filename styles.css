@@ -1419,7 +1419,7 @@ body {
     }
 
     #active-powerups {
-        bottom: 60px;
+        top: 40px;
         gap: 0.3rem;
     }
 
@@ -1688,7 +1688,7 @@ body {
     }
 
     #active-powerups {
-        bottom: 40px;
+        top: 35px;
     }
 
     /* Compact overlays */
@@ -1734,15 +1734,17 @@ body {
     }
 }
 
-/* Powerup indicators */
+/* Powerup indicators - second row below HUD */
 #active-powerups {
     position: absolute;
-    bottom: 80px;
-    left: 50%;
-    transform: translateX(-50%);
+    top: 45px;
+    left: 0;
+    right: 0;
     display: flex;
+    justify-content: center;
     gap: 0.5rem;
     z-index: 10;
+    min-height: 24px;
 }
 
 .powerup-indicator {
