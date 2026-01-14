@@ -913,6 +913,8 @@ class CodeBreakout {
                     this.speedRunWave++;
                     this.spawnSpeedRunWave();
                     this.speedRunWaveCleared = false;
+                    // Reset timer for new wave
+                    this.state.bonusEndTime = Date.now() + levelData.bonus.duration;
                     this.spawnFloatingText(CONFIG.CANVAS_WIDTH / 2, 100, `WAVE ${this.speedRunWave}`, '#ff6600');
                 }, 500);
             }

@@ -158,7 +158,7 @@ export const LEVELS = [
         mechanics: ['bonus_stage'],
         bonus: {
             type: 'relax',
-            duration: 180000,        // 3 minutes
+            duration: 60000,         // 1 minute
             brickRegenDelay: 2000,   // Bricks respawn every 2 seconds
             permanentShield: true,
             initialBalls: 10,
@@ -227,7 +227,7 @@ export const LEVELS = [
         mechanics: ['bonus_stage'],
         bonus: {
             type: 'doodle',
-            duration: 180000,        // 3 minutes
+            duration: 60000,         // 1 minute
             gravity: 0.25,           // Stronger gravity for faster gameplay
             jumpForce: -12,          // Stronger jump to reach platforms
             brickRegenDelay: 1000,   // Regenerate bricks after 1 second
@@ -305,7 +305,7 @@ export const LEVELS = [
         mechanics: ['bonus_stage'],
         bonus: {
             type: 'multiballMadness',
-            duration: 180000,
+            duration: 60000,        // 1 minute
             targetBalls: 50,
             maxBalls: 100,          // Max cap
             brickRegenDelay: 3000,
