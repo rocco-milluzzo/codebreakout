@@ -896,8 +896,14 @@ class CodeBreakout {
         }
 
         if (!this.state.isPaused && this.state.screen === 'game') {
-            this.update();
-            this.render();
+            try {
+                this.update();
+                this.render();
+            } catch (error) {
+                console.error('Game loop error:', error);
+                // Show error to user and allow quit
+                this.spawnFloatingText(CONFIG.CANVAS_WIDTH / 2, CONFIG.CANVAS_HEIGHT / 2, 'ERROR - Press ESC', '#ff0000');
+            }
         }
 
         this.animationId = requestAnimationFrame((t) => this.gameLoop(t));
