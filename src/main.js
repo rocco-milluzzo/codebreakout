@@ -985,6 +985,10 @@ class CodeBreakout {
                 break;
 
             case 'SHIELD': {
+                // Don't overwrite permanent shield in zen mode
+                if (this.shield && this.shield.permanent) {
+                    break;
+                }
                 // Stack effect: extends duration
                 const stacks = this.state.activatePowerup('SHIELD', duration);
                 const shieldDuration = stacks === 1 ? duration : duration * 1.5;
@@ -1061,8 +1065,8 @@ class CodeBreakout {
             this.expirePowerup(type);
         }
 
-        // Shield expiry
-        if (this.shield && Date.now() >= this.shield.expiry) {
+        // Shield expiry (skip permanent shields from zen mode)
+        if (this.shield && !this.shield.permanent && this.shield.expiry && Date.now() >= this.shield.expiry) {
             this.shield = null;
         }
 
@@ -1090,7 +1094,10 @@ class CodeBreakout {
                 break;
 
             case 'SHIELD':
-                this.shield = null;
+                // Don't clear permanent shield from zen mode
+                if (!this.shield || !this.shield.permanent) {
+                    this.shield = null;
+                }
                 break;
 
             case 'FIREBALL':

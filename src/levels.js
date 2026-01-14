@@ -153,8 +153,8 @@ export const LEVELS = [
         paddleWidth: 120,
         ballSpeed: 4,
         brickPattern: 'random',
-        powerupChance: 0.40,
-        powerupRarity: 1.0,
+        powerupChance: 0.05,         // Rare powerups
+        powerupRarity: 0.5,
         mechanics: ['bonus_stage'],
         bonus: {
             type: 'relax',
