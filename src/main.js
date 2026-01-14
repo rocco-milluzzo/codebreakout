@@ -82,7 +82,20 @@ class CodeBreakout {
         this.multiballGoalReached = false;
         this.levelIntroTimeout = null;
 
+        // Mobile detection
+        this.isMobile = this.detectMobile();
+
         this.init();
+    }
+
+    detectMobile() {
+        return window.matchMedia('(pointer: coarse)').matches ||
+               'ontouchstart' in window ||
+               navigator.maxTouchPoints > 0;
+    }
+
+    getMobileSpeedMultiplier() {
+        return this.isMobile ? CONFIG.MOBILE_SPEED_MULTIPLIER : 1;
     }
 
     init() {
@@ -279,6 +292,103 @@ class CodeBreakout {
 
         // Resize
         window.addEventListener('resize', () => this.setupCanvas());
+
+        // Mobile controls
+        this.setupMobileControls();
+    }
+
+    setupMobileControls() {
+        const swipeZone = document.getElementById('swipe-zone');
+        const shootBtn = document.getElementById('shoot-btn');
+        const swipeIndicator = document.getElementById('swipe-indicator');
+
+        if (!swipeZone || !shootBtn) return;
+
+        let swipeStartX = null;
+        let swipeCurrentX = null;
+        let indicatorPos = 50; // percentage
+
+        // Swipe zone touch handling
+        swipeZone.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            swipeStartX = touch.clientX;
+            swipeCurrentX = touch.clientX;
+        }, { passive: false });
+
+        swipeZone.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (swipeStartX === null) return;
+
+            const touch = e.touches[0];
+            swipeCurrentX = touch.clientX;
+
+            // Calculate delta and move paddle
+            const delta = swipeCurrentX - swipeStartX;
+            const sensitivity = 2.5; // Increase for faster paddle movement
+
+            // Move paddle based on swipe delta
+            if (this.paddle) {
+                this.paddle.x += delta * sensitivity;
+                // Clamp paddle position
+                this.paddle.x = Math.max(0, Math.min(CONFIG.CANVAS_WIDTH - this.paddle.width, this.paddle.x));
+            }
+
+            // Update indicator position
+            const zoneRect = swipeZone.getBoundingClientRect();
+            indicatorPos = ((touch.clientX - zoneRect.left) / zoneRect.width) * 100;
+            indicatorPos = Math.max(10, Math.min(90, indicatorPos));
+            swipeIndicator.style.left = `${indicatorPos}%`;
+
+            // Reset start position for continuous movement
+            swipeStartX = swipeCurrentX;
+        }, { passive: false });
+
+        swipeZone.addEventListener('touchend', () => {
+            swipeStartX = null;
+            swipeCurrentX = null;
+            // Reset indicator to center
+            swipeIndicator.style.left = '50%';
+        });
+
+        // Shoot button handling
+        shootBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            this.handleShootButton();
+        }, { passive: false });
+
+        // Store reference to update button text
+        this.shootBtn = shootBtn;
+    }
+
+    handleShootButton() {
+        if (this.state.screen !== 'game') return;
+
+        // If ball not launched, launch it
+        if (!this.state.isLaunched) {
+            this.launchBallAction();
+            return;
+        }
+
+        // If laser powerup active, fire laser
+        if (this.state.isPowerupActive('LASER')) {
+            this.fireLaserOnClick = true;
+        }
+    }
+
+    updateShootButton() {
+        if (!this.shootBtn) return;
+
+        if (!this.state.isLaunched) {
+            this.shootBtn.textContent = 'LAUNCH';
+            this.shootBtn.classList.remove('laser-mode');
+        } else if (this.state.isPowerupActive('LASER')) {
+            this.shootBtn.textContent = 'FIRE';
+            this.shootBtn.classList.add('laser-mode');
+        } else {
+            this.shootBtn.textContent = 'LAUNCH';
+            this.shootBtn.classList.remove('laser-mode');
+        }
     }
 
     handleClick() {
@@ -486,6 +596,13 @@ class CodeBreakout {
             this.balls = [createBallOnPaddle(this.paddle, levelData.ballSpeed)];
         }
 
+        // Apply mobile speed multiplier
+        if (this.isMobile) {
+            for (const ball of this.balls) {
+                setBallSpeedMultiplier(ball, this.getMobileSpeedMultiplier());
+            }
+        }
+
         // Create bricks
         const { bricks, portalPairs, totalBreakable } = createBricks(levelData);
         this.bricks = bricks;
@@ -641,6 +758,11 @@ class CodeBreakout {
 
         // Reset ball
         this.balls = [createBallOnPaddle(this.paddle, LEVELS[this.state.level].ballSpeed)];
+
+        // Apply mobile speed multiplier
+        if (this.isMobile) {
+            setBallSpeedMultiplier(this.balls[0], this.getMobileSpeedMultiplier());
+        }
 
         this.state.isLaunched = false;
         document.getElementById('launch-hint').classList.remove('hidden');
@@ -2144,6 +2266,9 @@ class CodeBreakout {
         const lostLives = Math.max(0, CONFIG.INITIAL_LIVES - currentLives);
         const hearts = '\u2764\uFE0F'.repeat(currentLives) + '\uD83D\uDDA4'.repeat(lostLives);
         document.getElementById('lives').textContent = hearts;
+
+        // Update mobile shoot button
+        this.updateShootButton();
     }
 
     // ========================================================================
