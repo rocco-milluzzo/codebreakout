@@ -87,6 +87,26 @@ const TIER_COLORS = {
     EPIC: '#ff44ff',
 };
 
+// Deck-based quote system - ensures all quotes shown before repeats
+const quoteDecks = {
+    LOW: [],
+    MEDIUM: [],
+    HIGH: [],
+    EPIC: [],
+};
+
+/**
+ * Shuffle array using Fisher-Yates algorithm
+ */
+function shuffleArray(array) {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+}
+
 /**
  * Get combo tier based on multiplier (adjusted for x5.0 max)
  */
@@ -99,12 +119,19 @@ export function getComboTier(multiplier) {
 }
 
 /**
- * Get random quote for combo tier
+ * Get quote for combo tier using deck system (no repeats until all shown)
  */
 export function getStreakQuote(tier) {
     const quotes = STREAK_QUOTES[tier];
     if (!quotes) return null;
-    return quotes[Math.floor(Math.random() * quotes.length)];
+
+    // Refill and shuffle deck if empty
+    if (quoteDecks[tier].length === 0) {
+        quoteDecks[tier] = shuffleArray(quotes);
+    }
+
+    // Draw from deck
+    return quoteDecks[tier].pop();
 }
 
 /**

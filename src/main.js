@@ -1040,9 +1040,8 @@ class CodeBreakout {
         document.getElementById('score').textContent = this.state.score.toLocaleString();
 
         const multiplierEl = document.getElementById('multiplier');
-        const multiplierValue = Math.floor(this.state.multiplier);
-        multiplierEl.textContent = `x${multiplierValue}`;
-        multiplierEl.parentElement.classList.toggle('active', multiplierValue > 1);
+        multiplierEl.textContent = `x${this.state.multiplier.toFixed(2)}`;
+        multiplierEl.parentElement.classList.toggle('active', this.state.multiplier > 1);
 
         // Lives as hearts
         const hearts = '\u2764\uFE0F'.repeat(this.state.lives) + '\uD83D\uDDA4'.repeat(CONFIG.INITIAL_LIVES - this.state.lives);
