@@ -67,6 +67,7 @@
                     <span id="bonus-countdown">5:00</span>
                 </div>
                 <button id="pause-btn" class="icon-btn">⏸</button>
+                <button id="menu-btn" class="icon-btn menu-btn">✕</button>
             </div>
             <div id="active-powerups"></div>
             <canvas id="game-canvas"></canvas>
@@ -85,7 +86,19 @@
         <div id="pause-screen" class="screen overlay hidden">
             <h2 class="glow-text">PAUSED</h2>
             <button id="resume-btn" class="btn primary glow-btn">RESUME</button>
-            <button id="quit-btn" class="btn secondary">QUIT</button>
+            <button id="quit-btn" class="btn secondary danger">QUIT TO MENU</button>
+        </div>
+
+        <!-- Quit Confirmation Dialog -->
+        <div id="quit-confirm" class="screen overlay hidden">
+            <div class="confirm-dialog">
+                <h3>Quit to Main Menu?</h3>
+                <p>Your progress will be lost.</p>
+                <div class="confirm-buttons">
+                    <button id="confirm-quit-btn" class="btn secondary danger">YES, QUIT</button>
+                    <button id="cancel-quit-btn" class="btn primary">CANCEL</button>
+                </div>
+            </div>
         </div>
 
         <!-- Level Intro Screen -->

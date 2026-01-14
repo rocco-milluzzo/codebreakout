@@ -272,7 +272,10 @@ class CodeBreakout {
         document.getElementById('highscores-back-btn').addEventListener('click', () => this.showScreen('start'));
         document.getElementById('pause-btn').addEventListener('click', () => this.togglePause());
         document.getElementById('resume-btn').addEventListener('click', () => this.togglePause());
-        document.getElementById('quit-btn').addEventListener('click', () => this.quitToMenu());
+        document.getElementById('menu-btn').addEventListener('click', () => this.showQuitConfirm());
+        document.getElementById('quit-btn').addEventListener('click', () => this.showQuitConfirm());
+        document.getElementById('confirm-quit-btn').addEventListener('click', () => this.confirmQuit());
+        document.getElementById('cancel-quit-btn').addEventListener('click', () => this.cancelQuit());
         document.getElementById('next-level-btn').addEventListener('click', () => this.nextLevel());
         document.getElementById('play-again-btn').addEventListener('click', () => this.playAgain());
         document.getElementById('submit-score-btn').addEventListener('click', () => this.submitScore());
@@ -711,6 +714,19 @@ class CodeBreakout {
         } else {
             this.showScreen('game');
         }
+    }
+
+    showQuitConfirm() {
+        document.getElementById('quit-confirm').classList.remove('hidden');
+    }
+
+    confirmQuit() {
+        document.getElementById('quit-confirm').classList.add('hidden');
+        this.quitToMenu();
+    }
+
+    cancelQuit() {
+        document.getElementById('quit-confirm').classList.add('hidden');
     }
 
     quitToMenu() {
