@@ -161,19 +161,10 @@ export function isHighScore(scores, score) {
 }
 
 /**
- * Clear all high scores
+ * Clear local high scores cache
+ * Note: Server-side deletion requires database admin access for security
  */
-export async function clearHighScores() {
-    const isApiAvailable = await checkApiAvailability();
-
-    if (isApiAvailable) {
-        try {
-            await fetch(`${API_BASE}/scores`, { method: 'DELETE' });
-        } catch (error) {
-            console.error('API error clearing scores:', error);
-        }
-    }
-
+export function clearHighScoresLocal() {
     try {
         localStorage.removeItem(STORAGE_KEY);
     } catch (e) {

@@ -1080,6 +1080,13 @@ class CodeBreakout {
     }
 
     async submitScore() {
+        // Disable button immediately to prevent double-clicks during async operation
+        const submitBtn = document.getElementById('submit-score-btn');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'SAVING...';
+        }
+
         await this.saveHighScore();
         displayLeaderboard(
             document.getElementById('leaderboard-list'),

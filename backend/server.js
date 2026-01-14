@@ -11,6 +11,13 @@ const { Pool } = pg;
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+// Valid level names (must match frontend LEVELS array)
+const VALID_LEVELS = [
+    'HTML', 'CSS', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Java', 'C#',
+    'TypeScript', 'C', 'C++', 'Go', 'Rust', 'Haskell', 'Assembly'
+];
 
 // Database connection
 const pool = new Pool({
@@ -22,8 +29,40 @@ const pool = new Pool({
 });
 
 // Middleware
-app.use(cors());
-app.use(express.json());
+app.use(cors({
+    origin: FRONTEND_URL,
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['Content-Type']
+}));
+app.use(express.json({ limit: '1kb' }));
+
+// Simple rate limiting (in-memory, resets on restart)
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW = 60000; // 1 minute
+const RATE_LIMIT_MAX = 30; // max requests per window
+
+function rateLimit(req, res, next) {
+    const ip = req.ip || req.connection.remoteAddress;
+    const now = Date.now();
+    const windowStart = now - RATE_LIMIT_WINDOW;
+
+    if (!rateLimitMap.has(ip)) {
+        rateLimitMap.set(ip, []);
+    }
+
+    const requests = rateLimitMap.get(ip).filter(time => time > windowStart);
+    requests.push(now);
+    rateLimitMap.set(ip, requests);
+
+    if (requests.length > RATE_LIMIT_MAX) {
+        return res.status(429).json({ error: 'Too many requests. Please wait.' });
+    }
+
+    next();
+}
+
+// Apply rate limiting to POST endpoints
+app.use('/api/scores', rateLimit);
 
 // Health check (both paths for flexibility)
 app.get('/health', async (req, res) => {
@@ -31,6 +70,7 @@ app.get('/health', async (req, res) => {
         await pool.query('SELECT 1');
         res.json({ status: 'ok', database: 'connected' });
     } catch (error) {
+        console.error('Health check failed:', error.message);
         res.status(500).json({ status: 'error', database: 'disconnected' });
     }
 });
@@ -40,6 +80,7 @@ app.get('/api/health', async (req, res) => {
         await pool.query('SELECT 1');
         res.json({ status: 'ok', database: 'connected' });
     } catch (error) {
+        console.error('Health check failed:', error.message);
         res.status(500).json({ status: 'error', database: 'disconnected' });
     }
 });
@@ -49,6 +90,7 @@ app.get('/api/health', async (req, res) => {
 // ============================================================================
 
 const MAX_SCORES = 10;
+const MAX_SCORE_VALUE = 999999999;
 
 /**
  * GET /api/scores
@@ -62,7 +104,7 @@ app.get('/api/scores', async (req, res) => {
         );
         res.json(result.rows);
     } catch (error) {
-        console.error('Error fetching scores:', error);
+        console.error('Error fetching scores:', error.message);
         res.status(500).json({ error: 'Failed to fetch scores' });
     }
 });
@@ -76,13 +118,27 @@ app.post('/api/scores', async (req, res) => {
     try {
         const { name, score, level } = req.body;
 
-        // Validate input
-        if (!name || typeof score !== 'number' || !level) {
-            return res.status(400).json({ error: 'Invalid input: name, score, and level are required' });
+        // Validate score: must be finite number in valid range
+        if (typeof score !== 'number' || !Number.isFinite(score) || score < 0 || score > MAX_SCORE_VALUE) {
+            return res.status(400).json({ error: 'Invalid score: must be a number between 0 and 999999999' });
         }
 
-        // Sanitize name (max 20 chars, trim whitespace)
-        const sanitizedName = String(name).trim().slice(0, 20) || 'Anonymous';
+        // Validate level: must be in allowed list
+        if (!level || !VALID_LEVELS.includes(level)) {
+            return res.status(400).json({ error: 'Invalid level' });
+        }
+
+        // Validate name
+        if (!name || typeof name !== 'string') {
+            return res.status(400).json({ error: 'Invalid name' });
+        }
+
+        // Sanitize name (max 20 chars, trim whitespace, alphanumeric + spaces only)
+        const sanitizedName = String(name)
+            .trim()
+            .slice(0, 20)
+            .replace(/[^a-zA-Z0-9 _-]/g, '')
+            || 'Anonymous';
 
         // Insert new score
         const result = await pool.query(
@@ -109,7 +165,7 @@ app.post('/api/scores', async (req, res) => {
             leaderboard: leaderboard.rows
         });
     } catch (error) {
-        console.error('Error adding score:', error);
+        console.error('Error adding score:', error.message);
         res.status(500).json({ error: 'Failed to add score' });
     }
 });
@@ -126,7 +182,7 @@ app.get('/api/scores/top', async (req, res) => {
         const topScore = result.rows[0]?.score || 0;
         res.json({ topScore });
     } catch (error) {
-        console.error('Error fetching top score:', error);
+        console.error('Error fetching top score:', error.message);
         res.status(500).json({ error: 'Failed to fetch top score' });
     }
 });
@@ -139,7 +195,7 @@ app.get('/api/scores/check/:score', async (req, res) => {
     try {
         const score = parseInt(req.params.score, 10);
 
-        if (isNaN(score)) {
+        if (!Number.isFinite(score) || score < 0) {
             return res.status(400).json({ error: 'Invalid score parameter' });
         }
 
@@ -157,24 +213,12 @@ app.get('/api/scores/check/:score', async (req, res) => {
 
         res.json({ qualifies: score > lowestScore });
     } catch (error) {
-        console.error('Error checking score:', error);
+        console.error('Error checking score:', error.message);
         res.status(500).json({ error: 'Failed to check score' });
     }
 });
 
-/**
- * DELETE /api/scores
- * Clear all high scores (for testing/admin purposes)
- */
-app.delete('/api/scores', async (req, res) => {
-    try {
-        await pool.query('DELETE FROM high_scores');
-        res.json({ message: 'All scores cleared' });
-    } catch (error) {
-        console.error('Error clearing scores:', error);
-        res.status(500).json({ error: 'Failed to clear scores' });
-    }
-});
+// NOTE: DELETE endpoint removed for security - use database admin tools if needed
 
 // ============================================================================
 // DATABASE INITIALIZATION
@@ -200,7 +244,7 @@ async function initDatabase() {
 
         console.log('Database initialized successfully');
     } catch (error) {
-        console.error('Database initialization error:', error);
+        console.error('Database initialization error:', error.message);
         throw error;
     }
 }
@@ -218,6 +262,7 @@ async function startServer() {
 
             app.listen(PORT, '0.0.0.0', () => {
                 console.log(`CODEBREAKOUT API running on port ${PORT}`);
+                console.log(`CORS origin: ${FRONTEND_URL}`);
             });
 
             return;
