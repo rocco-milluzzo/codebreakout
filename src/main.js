@@ -268,6 +268,7 @@ class CodeBreakout {
         // Buttons
         document.getElementById('classic-btn').addEventListener('click', () => this.startGame('classic'));
         document.getElementById('campaign-btn').addEventListener('click', () => this.startGame('campaign'));
+        document.getElementById('easy-mode-btn').addEventListener('click', () => this.startGame('easy'));
         document.getElementById('highscores-btn').addEventListener('click', () => this.showHighScores());
         document.getElementById('highscores-back-btn').addEventListener('click', () => this.showScreen('start'));
         document.getElementById('pause-btn').addEventListener('click', () => this.togglePause());
@@ -280,6 +281,10 @@ class CodeBreakout {
         document.getElementById('play-again-btn').addEventListener('click', () => this.playAgain());
         document.getElementById('submit-score-btn').addEventListener('click', () => this.submitScore());
         document.getElementById('sound-toggle').addEventListener('click', () => this.toggleSound());
+
+        // Share buttons
+        document.getElementById('share-facebook-btn').addEventListener('click', () => this.shareOnFacebook());
+        document.getElementById('share-link-btn').addEventListener('click', () => this.copyShareLink());
 
         // Bonus mode buttons
         document.getElementById('bonus-mode-btn').addEventListener('click', () => this.showBonusSelect());
@@ -461,7 +466,15 @@ class CodeBreakout {
 
         this.state.reset();
         this.state.gameMode = mode;
-        this.state.levelSequence = this.buildLevelSequence(mode);
+
+        // Easy mode uses campaign level sequence but with easy mode settings
+        if (mode === 'easy') {
+            this.state.levelSequence = this.buildLevelSequence('campaign');
+            this.state.initEasyMode();
+        } else {
+            this.state.levelSequence = this.buildLevelSequence(mode);
+        }
+
         this.state.sequenceIndex = 0;
         this.state.level = this.state.levelSequence[0];
         this.bonusOnlyMode = false;
@@ -583,8 +596,9 @@ class CodeBreakout {
         const isBonus = levelData.bonus !== undefined;
         this.state.bonusActive = isBonus;
 
-        // Create paddle
-        this.paddle = createPaddle(levelData.paddleWidth);
+        // Create paddle (apply easy mode width multiplier if active)
+        const paddleWidth = levelData.paddleWidth * this.state.getPaddleWidthMultiplier();
+        this.paddle = createPaddle(paddleWidth);
 
         // Create ball(s)
         if (isBonus && levelData.bonus.initialBalls > 1) {
@@ -836,7 +850,14 @@ class CodeBreakout {
                 gameOverTitle.textContent = 'BONUS COMPLETE!';
                 gameOverTitle.style.color = LEVELS[this.state.level].color;
             } else if (victory) {
-                const modeTitle = this.state.gameMode === 'classic' ? 'CLASSIC COMPLETE!' : 'CAMPAIGN COMPLETE!';
+                let modeTitle;
+                if (this.state.gameMode === 'classic') {
+                    modeTitle = 'CLASSIC COMPLETE!';
+                } else if (this.state.gameMode === 'easy') {
+                    modeTitle = 'EASY MODE COMPLETE!';
+                } else {
+                    modeTitle = 'CAMPAIGN COMPLETE!';
+                }
                 gameOverTitle.textContent = modeTitle;
                 gameOverTitle.style.color = '#00ff88';
             } else {
@@ -857,6 +878,7 @@ class CodeBreakout {
             const mode = this.getCurrentScoreMode();
             const modeNames = {
                 campaign: 'TOP SCORES',
+                easy: 'EASY MODE BEST',
                 roguelike: 'ROGUELIKE BEST',
                 relax: 'ZEN MODE BEST',
                 doodle: 'BOUNCE BEST',
@@ -1578,9 +1600,10 @@ class CodeBreakout {
         // Floating score text
         this.spawnFloatingText(center.x, center.y, `+${Math.floor(points)}`, brick.color);
 
-        // Powerup drop with level-based rarity
+        // Powerup drop with level-based rarity (apply easy mode multiplier)
         const levelData = LEVELS[this.state.level];
-        if (Math.random() < levelData.powerupChance) {
+        const powerupChance = levelData.powerupChance * this.state.getPowerupDropMultiplier();
+        if (Math.random() < powerupChance) {
             const rarityModifier = levelData.powerupRarity || 1.0;
             this.powerups.push(spawnPositivePowerup(center.x, center.y, rarityModifier));
         }
@@ -2285,9 +2308,15 @@ class CodeBreakout {
 
         // Lives as hearts (handle extra lives beyond initial count)
         const currentLives = Math.max(0, this.state.lives);
-        const lostLives = Math.max(0, CONFIG.INITIAL_LIVES - currentLives);
-        const hearts = '\u2764\uFE0F'.repeat(currentLives) + '\uD83D\uDDA4'.repeat(lostLives);
-        document.getElementById('lives').textContent = hearts;
+        const initialLives = this.state.easyMode ? CONFIG.EASY_MODE.INITIAL_LIVES : CONFIG.INITIAL_LIVES;
+        // For easy mode with many lives, show number + heart instead of many hearts
+        if (currentLives > 5) {
+            document.getElementById('lives').textContent = `${currentLives} \u2764\uFE0F`;
+        } else {
+            const lostLives = Math.max(0, Math.min(initialLives, 5) - currentLives);
+            const hearts = '\u2764\uFE0F'.repeat(currentLives) + '\uD83D\uDDA4'.repeat(lostLives);
+            document.getElementById('lives').textContent = hearts;
+        }
 
         // Update mobile shoot button
         this.updateShootButton();
@@ -2299,10 +2328,12 @@ class CodeBreakout {
 
     /**
      * Get the current game mode for high scores
-     * @returns {string} 'campaign' or bonus type ('roguelike', 'relax', 'doodle')
+     * @returns {string} 'campaign', 'easy', or bonus type ('roguelike', 'relax', 'doodle')
      */
     getCurrentScoreMode() {
-        if (!this.bonusOnlyMode) return 'campaign';
+        if (!this.bonusOnlyMode) {
+            return this.state.easyMode ? 'easy' : 'campaign';
+        }
         const levelData = LEVELS[this.state.level];
         return levelData.bonus?.type || 'campaign';
     }
@@ -2405,6 +2436,96 @@ class CodeBreakout {
         }
 
         this.showScreen('highscores');
+    }
+
+    // ========================================================================
+    // SHARE FUNCTIONALITY
+    // ========================================================================
+
+    /**
+     * Get the game URL for sharing
+     * @returns {string} Game URL
+     */
+    getGameUrl() {
+        // Use the current location, or fall back to a placeholder
+        return window.location.href.split('?')[0].split('#')[0];
+    }
+
+    /**
+     * Get share text with score
+     * @returns {string} Share text
+     */
+    getShareText() {
+        const score = this.state.score.toLocaleString();
+        const level = LEVELS[this.state.level].name;
+        const mode = this.state.easyMode ? 'Easy Mode' : (this.state.gameMode === 'classic' ? 'Classic' : 'Campaign');
+        return `I scored ${score} points and reached ${level} in CODEBREAKOUT ${mode}! Can you beat my score?`;
+    }
+
+    /**
+     * Share score on Facebook
+     */
+    shareOnFacebook() {
+        const gameUrl = this.getGameUrl();
+        const shareText = this.getShareText();
+
+        // Facebook share URL
+        const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(gameUrl)}&quote=${encodeURIComponent(shareText)}`;
+
+        // Open in new window
+        window.open(facebookUrl, '_blank', 'width=600,height=400,noopener,noreferrer');
+    }
+
+    /**
+     * Copy share link to clipboard
+     */
+    async copyShareLink() {
+        const gameUrl = this.getGameUrl();
+        const shareText = this.getShareText();
+        const fullText = `${shareText}\n\nPlay now: ${gameUrl}`;
+
+        const linkBtn = document.getElementById('share-link-btn');
+
+        const showCopiedFeedback = () => {
+            if (linkBtn) {
+                // Store original content
+                const iconSpan = linkBtn.querySelector('.share-icon');
+                const originalIcon = iconSpan ? iconSpan.textContent : '';
+
+                // Update to show copied
+                if (iconSpan) iconSpan.textContent = '\u2713';
+                linkBtn.lastChild.textContent = ' Copied!';
+                linkBtn.classList.add('copied');
+
+                setTimeout(() => {
+                    if (iconSpan) iconSpan.textContent = originalIcon;
+                    linkBtn.lastChild.textContent = ' Copy Link';
+                    linkBtn.classList.remove('copied');
+                }, 2000);
+            }
+        };
+
+        try {
+            await navigator.clipboard.writeText(fullText);
+            showCopiedFeedback();
+        } catch (err) {
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = fullText;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-9999px';
+            document.body.appendChild(textArea);
+            textArea.select();
+
+            try {
+                document.execCommand('copy');
+                showCopiedFeedback();
+            } catch (copyErr) {
+                console.error('Failed to copy:', copyErr);
+            }
+
+            document.body.removeChild(textArea);
+        }
     }
 
     // ========================================================================

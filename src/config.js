@@ -60,4 +60,12 @@ export const CONFIG = {
 
     // Powerup stacking
     MAX_POWERUP_STACKS: 2,  // Max times a powerup can stack
+
+    // Easy Mode settings
+    EASY_MODE: {
+        INITIAL_LIVES: 10,
+        MAX_LIVES: 15,
+        PADDLE_WIDTH_MULTIPLIER: 1.5,  // 50% wider paddle
+        POWERUP_DROP_MULTIPLIER: 2.0,  // Double powerup drop chance
+    },
 };

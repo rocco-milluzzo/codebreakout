@@ -34,9 +34,42 @@ export class GameState {
         this.destroyedBricks = [];     // Track destroyed bricks for regeneration
 
         // Game mode state
-        this.gameMode = 'classic';     // 'classic' | 'campaign' | 'bonus'
+        this.gameMode = 'classic';     // 'classic' | 'campaign' | 'bonus' | 'easy'
         this.levelSequence = [];       // Array of level indices to play
         this.sequenceIndex = 0;        // Current position in sequence
+        this.easyMode = false;         // Easy mode flag
+    }
+
+    /**
+     * Initialize easy mode settings
+     */
+    initEasyMode() {
+        this.easyMode = true;
+        this.lives = CONFIG.EASY_MODE.INITIAL_LIVES;
+    }
+
+    /**
+     * Get max lives based on mode
+     * @returns {number} Maximum lives
+     */
+    getMaxLives() {
+        return this.easyMode ? CONFIG.EASY_MODE.MAX_LIVES : CONFIG.MAX_LIVES;
+    }
+
+    /**
+     * Get powerup drop chance multiplier
+     * @returns {number} Multiplier for powerup drop chance
+     */
+    getPowerupDropMultiplier() {
+        return this.easyMode ? CONFIG.EASY_MODE.POWERUP_DROP_MULTIPLIER : 1.0;
+    }
+
+    /**
+     * Get paddle width multiplier for easy mode
+     * @returns {number} Multiplier for paddle width
+     */
+    getPaddleWidthMultiplier() {
+        return this.easyMode ? CONFIG.EASY_MODE.PADDLE_WIDTH_MULTIPLIER : 1.0;
     }
 
     /**
@@ -59,7 +92,7 @@ export class GameState {
         const currentMilestone = Math.floor(this.score / threshold);
         const lastMilestone = Math.floor(this.lastExtraLifeScore / threshold);
 
-        if (currentMilestone > lastMilestone && this.lives < CONFIG.MAX_LIVES) {
+        if (currentMilestone > lastMilestone && this.lives < this.getMaxLives()) {
             this.lives++;
             this.lastExtraLifeScore = this.score;
             return true;
