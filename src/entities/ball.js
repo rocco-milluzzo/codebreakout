@@ -221,6 +221,7 @@ export function createMultiBalls(sourceBall, count, maxBalls, currentCount) {
     for (let i = 0; i < count && currentCount + newBalls.length < maxBalls; i++) {
         const angle = (Math.random() - 0.5) * Math.PI / 2;
         newBalls.push({
+            id: ++ballIdCounter, // Unique ID for trail tracking
             x: sourceBall.x,
             y: sourceBall.y,
             dx: Math.sin(angle) * sourceBall.speed,

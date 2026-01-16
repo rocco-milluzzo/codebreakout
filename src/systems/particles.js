@@ -527,15 +527,63 @@ export class ParticleManager {
     }
 
     /**
-     * Draw ball trails
+     * Draw ball trails with optional cosmetic customization
+     * @param {CanvasRenderingContext2D} ctx
+     * @param {object[]} balls - Array of ball objects
+     * @param {string} levelColor - Default level color
+     * @param {object} trailCosmetic - Optional trail cosmetic customization
      */
-    drawBallTrails(ctx, balls, levelColor = '#00ff88') {
-        this.ballTrails.forEach((trail, ballId) => {
-            const ball = balls.find(b => b.id === ballId);
-            if (ball) {
-                trail.draw(ctx, ball.fireball ? '#ff4400' : levelColor, ball.radius);
+    drawBallTrails(ctx, balls, levelColor = '#00ff88', trailCosmetic = null) {
+        ctx.save();
+
+        for (const ball of balls) {
+            const trail = this.ballTrails.get(ball.id);
+            if (!trail || trail.count < 2) continue;
+
+            // Determine trail colors
+            let colors = [ball.fireball ? '#ff4400' : levelColor];
+            if (trailCosmetic) {
+                if (trailCosmetic.rainbow) {
+                    colors = [];
+                    for (let i = 0; i < 6; i++) {
+                        const hue = ((Date.now() / 20) + i * 60) % 360;
+                        colors.push(`hsl(${hue}, 100%, 50%)`);
+                    }
+                } else if (trailCosmetic.colors) {
+                    colors = trailCosmetic.colors;
+                } else if (trailCosmetic.color) {
+                    colors = [trailCosmetic.color];
+                }
             }
-        });
+
+            // Draw trail segments
+            for (let i = 1; i < trail.count; i++) {
+                const curr = trail.positions[(trail.head - trail.count + i + trail.maxLength) % trail.maxLength];
+                const prev = trail.positions[(trail.head - trail.count + i - 1 + trail.maxLength) % trail.maxLength];
+                if (!curr || !prev) continue;
+
+                const alpha = i / trail.count;
+                const colorIndex = Math.floor((i / trail.count) * colors.length);
+                const color = colors[Math.min(colorIndex, colors.length - 1)];
+
+                ctx.globalAlpha = alpha * (trailCosmetic?.fade ? 0.5 : 0.8);
+                ctx.strokeStyle = color;
+                ctx.lineWidth = ball.radius * (trailCosmetic?.pixelated ? 1.5 : 1) * alpha;
+
+                if (trailCosmetic?.pixelated) {
+                    // Pixelated trail - draw squares
+                    ctx.fillStyle = color;
+                    ctx.fillRect(curr.x - 2, curr.y - 2, 4, 4);
+                } else {
+                    ctx.beginPath();
+                    ctx.moveTo(prev.x, prev.y);
+                    ctx.lineTo(curr.x, curr.y);
+                    ctx.stroke();
+                }
+            }
+        }
+
+        ctx.restore();
     }
 
     /**

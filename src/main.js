@@ -25,10 +25,16 @@ import { render, updatePowerupIndicators } from './systems/render.js';
 import { createAudioManager } from './systems/audio.js';
 import { createParticleManager } from './systems/particles.js';
 import { createHapticManager } from './systems/haptics.js';
-import { loadHighScores, addHighScore, updateHighScoreDisplay, displayLeaderboard, recordGameSession, fetchGameStats } from './systems/storage.js';
+import { loadHighScores, addHighScore, updateHighScoreDisplay, displayLeaderboard, recordGameSession, fetchGameStats, loadProgress, saveProgress, updateProgress, unlockCosmetic, selectCosmetic } from './systems/storage.js';
+
+// Cosmetics
+import { COSMETICS, getCosmeticById, getUnlockableCosmetics } from './cosmetics.js';
 
 // Easter eggs
 import { getComboTier, getStreakQuote, checkSpecialAttack, createQuoteElement, createSpecialAttackElement } from './easterEggs.js';
+
+// Achievements
+import { ACHIEVEMENTS, getNewlyUnlockedAchievements } from './achievements.js';
 
 /**
  * Main game class
@@ -56,6 +62,15 @@ class CodeBreakout {
         this.particles = createParticleManager();
         this.haptics = createHapticManager();
         this.highScores = [];
+
+        // Progress and cosmetics
+        this.progress = loadProgress();
+        this.currentTab = 'paddles';
+
+        // Achievements tracking
+        this.unlockedAchievements = this.progress.unlockedAchievements || [];
+        this.maxComboThisGame = 0;
+        this.maxBallsThisGame = 0;
 
         // Animation
         this.lastTime = 0;
@@ -87,6 +102,7 @@ class CodeBreakout {
 
         // Bonus-only mode
         this.bonusOnlyMode = false;
+        this.currentBonusType = null;
 
         // New bonus mode state
         this.bullets = [];
@@ -329,6 +345,8 @@ class CodeBreakout {
         document.getElementById('cancel-quit-btn').addEventListener('click', () => this.cancelQuit());
         document.getElementById('next-level-btn').addEventListener('click', () => this.nextLevel());
         document.getElementById('play-again-btn').addEventListener('click', () => this.playAgain());
+        document.getElementById('retry-bonus-btn').addEventListener('click', () => this.retryBonus());
+        document.getElementById('back-to-menu-btn').addEventListener('click', () => this.backToMenu());
         document.getElementById('submit-score-btn').addEventListener('click', () => this.submitScore());
         document.getElementById('sound-toggle').addEventListener('click', () => this.toggleSound());
 
@@ -347,6 +365,17 @@ class CodeBreakout {
         document.getElementById('bonus-madness-btn').addEventListener('click', () => this.startBonusLevel('multiballMadness'));
         document.getElementById('bonus-boss-btn').addEventListener('click', () => this.startBonusLevel('boss'));
         document.getElementById('bonus-speed-btn').addEventListener('click', () => this.startBonusLevel('speedRun'));
+
+        // Customize screen
+        document.getElementById('customize-btn').addEventListener('click', () => this.showCustomize());
+        document.getElementById('customize-back-btn').addEventListener('click', () => this.showScreen('start'));
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => this.switchCosmeticTab(e.target.dataset.tab));
+        });
+
+        // Achievements screen
+        document.getElementById('achievements-btn').addEventListener('click', () => this.showAchievements());
+        document.getElementById('achievements-back-btn').addEventListener('click', () => this.showScreen('start'));
 
         // Resize
         window.addEventListener('resize', () => this.setupCanvas());
@@ -518,6 +547,10 @@ class CodeBreakout {
         this.state.gameMode = mode;
         this.state.gameStartTime = Date.now();
 
+        // Reset achievement tracking for this game
+        this.maxComboThisGame = 0;
+        this.maxBallsThisGame = 0;
+
         // Easy mode uses campaign level sequence but with easy mode settings
         if (mode === 'easy') {
             this.state.levelSequence = this.buildLevelSequence('campaign');
@@ -544,12 +577,233 @@ class CodeBreakout {
         this.showScreen('bonus-select');
     }
 
+    showCustomize() {
+        this.progress = loadProgress();
+        this.showScreen('customize');
+        this.renderCosmeticGrid();
+        this.updateCosmeticPreview();
+    }
+
+    switchCosmeticTab(tab) {
+        this.currentTab = tab;
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === tab);
+        });
+        this.renderCosmeticGrid();
+    }
+
+    renderCosmeticGrid() {
+        const grid = document.getElementById('cosmetic-grid');
+        const items = COSMETICS[this.currentTab];
+        const selectedKey = this.currentTab === 'paddles' ? 'selectedPaddle' :
+                           this.currentTab === 'trails' ? 'selectedTrail' : 'selectedBackground';
+        const selected = this.progress[selectedKey];
+
+        grid.innerHTML = items.map(item => {
+            const isUnlocked = item.unlocked || this.progress.unlockedCosmetics.includes(item.id);
+            const isSelected = item.id === selected;
+            const reqText = item.requirement ? this.getRequirementText(item.requirement) : '';
+
+            return `
+                <div class="cosmetic-item ${isUnlocked ? '' : 'locked'} ${isSelected ? 'selected' : ''}"
+                     data-id="${item.id}" ${isUnlocked ? '' : 'title="' + reqText + '"'}>
+                    <div class="icon">${this.getCosmeticIcon(item)}</div>
+                    <div class="name">${item.name}</div>
+                    ${!isUnlocked ? '<div class="requirement">' + reqText + '</div>' : ''}
+                </div>
+            `;
+        }).join('');
+
+        grid.querySelectorAll('.cosmetic-item:not(.locked)').forEach(el => {
+            el.addEventListener('click', () => this.selectCosmeticItem(el.dataset.id));
+        });
+    }
+
+    getCosmeticIcon(item) {
+        if (item.rainbow) return '🌈';
+        if (item.id === 'fire') return '🔥';
+        if (item.id === 'ice') return '❄️';
+        if (item.id === 'neon') return '💡';
+        if (item.id === 'pixel') return '👾';
+        if (item.id === 'gold') return '🥇';
+        if (item.id === 'ghost') return '👻';
+        if (item.id === 'matrix') return '🖥️';
+        if (item.id === 'stars') return '✨';
+        if (item.id === 'retro') return '📺';
+        if (item.id === 'space') return '🌌';
+        return '⬜';
+    }
+
+    getRequirementText(req) {
+        const labels = {
+            score: 'Score',
+            levels: 'Levels',
+            perfect: 'Perfect',
+            combo: 'Max Combo',
+            bonus: 'Bonus Modes'
+        };
+        return `${labels[req.type] || req.type}: ${req.value}`;
+    }
+
+    selectCosmeticItem(id) {
+        const type = this.currentTab.slice(0, -1); // 'paddles' -> 'paddle'
+        this.progress = selectCosmetic(type, id);
+        this.renderCosmeticGrid();
+        this.updateCosmeticPreview();
+    }
+
+    updateCosmeticPreview() {
+        const canvas = document.getElementById('preview-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const w = canvas.width;
+        const h = canvas.height;
+
+        // Clear canvas
+        ctx.fillStyle = '#0a0a0f';
+        ctx.fillRect(0, 0, w, h);
+
+        // Get selected cosmetics
+        const paddleCosmetic = getCosmeticById('paddle', this.progress.selectedPaddle);
+        const trailCosmetic = getCosmeticById('trail', this.progress.selectedTrail);
+
+        // Draw a mini paddle preview
+        const paddleW = 80;
+        const paddleH = 12;
+        const paddleX = (w - paddleW) / 2;
+        const paddleY = h - 25;
+
+        // Determine paddle color
+        let paddleColor = '#00ff88';
+        if (paddleCosmetic) {
+            if (paddleCosmetic.rainbow) {
+                const hue = (Date.now() / 20) % 360;
+                paddleColor = `hsl(${hue}, 100%, 50%)`;
+            } else if (paddleCosmetic.color) {
+                paddleColor = paddleCosmetic.color;
+            }
+        }
+
+        // Draw paddle with cosmetic effects
+        ctx.save();
+
+        // Glow effect for neon/cyber
+        if (paddleCosmetic && paddleCosmetic.glow) {
+            ctx.shadowColor = paddleColor;
+            ctx.shadowBlur = 20;
+        } else {
+            ctx.shadowColor = paddleColor;
+            ctx.shadowBlur = 8;
+        }
+
+        // Shine effect for golden
+        if (paddleCosmetic && paddleCosmetic.shine) {
+            const shimmer = Math.sin(Date.now() / 200) * 0.3 + 0.7;
+            ctx.globalAlpha = shimmer;
+        }
+
+        ctx.fillStyle = paddleColor;
+
+        // Pixelated effect for retro
+        if (paddleCosmetic && paddleCosmetic.pixelated) {
+            const pixelSize = 4;
+            for (let px = 0; px < paddleW; px += pixelSize) {
+                for (let py = 0; py < paddleH; py += pixelSize) {
+                    ctx.fillRect(paddleX + px, paddleY + py, pixelSize - 1, pixelSize - 1);
+                }
+            }
+        } else {
+            ctx.beginPath();
+            ctx.roundRect(paddleX, paddleY, paddleW, paddleH, 4);
+            ctx.fill();
+        }
+        ctx.restore();
+
+        // Draw ball with trail
+        const ballX = w / 2;
+        const ballY = h / 2;
+        const ballRadius = 6;
+
+        // Trail
+        let trailColor = '#00ff88';
+        if (trailCosmetic) {
+            if (trailCosmetic.rainbow) {
+                const hue = (Date.now() / 30) % 360;
+                trailColor = `hsl(${hue}, 100%, 50%)`;
+            } else if (trailCosmetic.color) {
+                trailColor = trailCosmetic.color;
+            }
+        }
+
+        // Draw trail effect
+        ctx.save();
+        for (let i = 5; i >= 0; i--) {
+            const alpha = (5 - i) / 8;
+            const offset = i * 8;
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = trailColor;
+            ctx.beginPath();
+            ctx.arc(ballX - offset, ballY + offset * 0.3, ballRadius * (1 - i * 0.1), 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.restore();
+
+        // Draw ball
+        ctx.save();
+        ctx.shadowColor = '#ffffff';
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(ballX, ballY, ballRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // Animate effects (rainbow, shine)
+        const needsAnimation = (paddleCosmetic && (paddleCosmetic.rainbow || paddleCosmetic.shine)) ||
+                               (trailCosmetic && trailCosmetic.rainbow);
+        if (needsAnimation) {
+            requestAnimationFrame(() => {
+                if (document.getElementById('customize-screen').classList.contains('hidden')) return;
+                this.updateCosmeticPreview();
+            });
+        }
+    }
+
+    showUnlockToast(cosmetic) {
+        const toast = document.createElement('div');
+        toast.className = 'achievement-toast';
+        toast.innerHTML = `
+            <div class="toast-icon">${this.getCosmeticIcon(cosmetic)}</div>
+            <div class="toast-content">
+                <div class="toast-title">NEW ${cosmetic.type.toUpperCase()} UNLOCKED!</div>
+                <div class="toast-name">${cosmetic.name}</div>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+        this.audio.playSound('levelUp');
+    }
+
     playAgain() {
         if (this.bonusOnlyMode) {
             this.showBonusSelect();
         } else {
             // Restart with same game mode
             this.startGame(this.state.gameMode);
+        }
+    }
+
+    retryBonus() {
+        if (this.currentBonusType) {
+            this.startBonusLevel(this.currentBonusType);
+        }
+    }
+
+    backToMenu() {
+        if (this.bonusOnlyMode) {
+            this.showBonusSelect();
+        } else {
+            this.showScreen('start');
         }
     }
 
@@ -567,6 +821,7 @@ class CodeBreakout {
         this.state.reset();
         this.state.gameStartTime = Date.now();
         this.bonusOnlyMode = true;
+        this.currentBonusType = bonusType;
 
         // Find the level index for this bonus type
         const levelIndex = LEVELS.findIndex(l => l.bonus && l.bonus.type === bonusType);
@@ -881,11 +1136,11 @@ class CodeBreakout {
             return;
         }
 
-        // Update stats
-        document.getElementById('stat-time').textContent = this.formatTime(timeMs);
-        document.getElementById('stat-bricks').textContent = this.state.bricksDestroyed;
-        document.getElementById('stat-combo').textContent = `x${this.state.maxMultiplier.toFixed(2)}`;
-        document.getElementById('stat-score').textContent = Math.floor(timeBonus + perfectBonus);
+        // Update level complete stats display
+        document.getElementById('level-stat-time').textContent = this.formatTime(timeMs);
+        document.getElementById('level-stat-bricks').textContent = this.state.bricksDestroyed;
+        document.getElementById('level-stat-combo').textContent = `x${this.state.maxMultiplier.toFixed(2)}`;
+        document.getElementById('level-stat-score').textContent = Math.floor(timeBonus + perfectBonus);
 
         // Next level preview (use sequence system)
         const nextSequenceIndex = this.state.sequenceIndex + 1;
@@ -894,6 +1149,28 @@ class CodeBreakout {
             document.getElementById('next-level-name').textContent = `Next: ${LEVELS[nextLevelIndex].name}`;
         } else {
             document.getElementById('next-level-name').textContent = 'Final Level Complete!';
+        }
+
+        // Check achievements at level complete
+        this.checkAndUnlockAchievements();
+
+        // Update progress
+        this.progress = loadProgress();
+        this.progress.levelsCompleted++;
+        if (this.state.perfectLevel) {
+            this.progress.perfectLevels++;
+        }
+        this.progress.totalScore += this.state.score;
+        if (this.state.multiplier > this.progress.maxCombo) {
+            this.progress.maxCombo = this.state.multiplier;
+        }
+        saveProgress(this.progress);
+
+        // Check for new cosmetic unlocks
+        const unlockable = getUnlockableCosmetics(this.progress);
+        for (const cosmetic of unlockable) {
+            unlockCosmetic(cosmetic.id);
+            this.showUnlockToast(cosmetic);
         }
 
         this.showScreen('level-complete');
@@ -912,6 +1189,22 @@ class CodeBreakout {
         const levelReached = LEVELS[this.state.level].name;
         const statsMode = this.getStatsMode();
         recordGameSession(statsMode, levelReached, playTimeSeconds, this.state.score);
+
+        // Update local progress on game end
+        this.progress = loadProgress();
+        this.progress.gamesPlayed = (this.progress.gamesPlayed || 0) + 1;
+        this.progress.totalPlayTime = (this.progress.totalPlayTime || 0) + (Date.now() - this.state.gameStartTime);
+        this.progress.totalScore = (this.progress.totalScore || 0) + this.state.score;
+        if (this.state.score > (this.progress.bestScore || 0)) {
+            this.progress.bestScore = this.state.score;
+        }
+        if (this.state.maxMultiplier > (this.progress.maxCombo || 0)) {
+            this.progress.maxCombo = this.state.maxMultiplier;
+        }
+        if (this.bonusOnlyMode && victory) {
+            this.progress.bonusCompleted = (this.progress.bonusCompleted || 0) + 1;
+        }
+        saveProgress(this.progress);
 
         // Update final score display
         document.getElementById('final-score').textContent = this.state.score.toLocaleString();
@@ -940,10 +1233,24 @@ class CodeBreakout {
             }
         }
 
-        // Update play again button text
+        // Show/hide buttons based on mode
+        // Bonus mode: RETRY + BACK (to bonus select)
+        // Regular mode: BACK (to menu) + PLAY AGAIN
         const playAgainBtn = document.getElementById('play-again-btn');
+        const retryBtn = document.getElementById('retry-bonus-btn');
+        const backBtn = document.getElementById('back-to-menu-btn');
+
         if (playAgainBtn) {
-            playAgainBtn.textContent = this.bonusOnlyMode ? 'BACK TO BONUS' : 'PLAY AGAIN';
+            // Hide PLAY AGAIN in bonus mode (use RETRY instead)
+            playAgainBtn.classList.toggle('hidden', this.bonusOnlyMode);
+        }
+        if (retryBtn) {
+            // Show RETRY only in bonus mode
+            retryBtn.classList.toggle('hidden', !this.bonusOnlyMode);
+        }
+        if (backBtn) {
+            // Always show BACK button
+            backBtn.classList.remove('hidden');
         }
 
         // Update leaderboard title to show which mode
@@ -1686,6 +1993,11 @@ class CodeBreakout {
         this.state.incrementMultiplier();
         this.checkStreakQuote();
 
+        // Track max combo for achievements
+        if (this.state.multiplier > this.maxComboThisGame) {
+            this.maxComboThisGame = this.state.multiplier;
+        }
+
         this.state.bricksDestroyed++;
 
         // Enhanced particles
@@ -2090,6 +2402,11 @@ class CodeBreakout {
         const newBalls = createMultiBalls(sourceBall, 2, CONFIG.MAX_BALLS, this.balls.length);
 
         this.balls.push(...newBalls);
+
+        // Track max balls for achievements
+        if (this.balls.length > this.maxBallsThisGame) {
+            this.maxBallsThisGame = this.balls.length;
+        }
     }
 
     updatePowerupTimers() {
@@ -2299,6 +2616,7 @@ class CodeBreakout {
             activePowerups: this.state.activePowerups,
             paddleFlash: this.particles.getPaddleFlashIntensity(),
             comboGlow: this.particles.getComboGlow(),
+            paddleCosmetic: this.progress ? getCosmeticById('paddle', this.progress.selectedPaddle) : null,
         });
 
         // Render enhanced particles and effects
@@ -2586,6 +2904,73 @@ class CodeBreakout {
     }
 
     // ========================================================================
+    // ACHIEVEMENTS
+    // ========================================================================
+
+    showAchievements() {
+        this.progress = loadProgress();
+        this.unlockedAchievements = this.progress.unlockedAchievements || [];
+        this.showScreen('achievements');
+        this.renderAchievementsGrid();
+    }
+
+    renderAchievementsGrid() {
+        const grid = document.getElementById('achievements-grid');
+        // Note: Achievement data (icon, name, desc) comes from trusted ACHIEVEMENTS constant
+        grid.innerHTML = ACHIEVEMENTS.map(ach => {
+            const isUnlocked = this.unlockedAchievements.includes(ach.id);
+            return `
+                <div class="achievement-item ${isUnlocked ? 'unlocked' : 'locked'}">
+                    <div class="icon">${ach.icon}</div>
+                    <div class="name">${ach.name}</div>
+                    <div class="desc">${ach.desc}</div>
+                </div>
+            `;
+        }).join('');
+
+        document.getElementById('achievements-count').textContent =
+            `${this.unlockedAchievements.length}/${ACHIEVEMENTS.length}`;
+    }
+
+    checkAndUnlockAchievements() {
+        const gameState = {
+            maxComboThisGame: this.maxComboThisGame,
+            maxBallsThisGame: this.maxBallsThisGame,
+            levelTime: Date.now() - this.state.levelStartTime,
+            completedBonusType: LEVELS[this.state.level]?.bonus?.type || null,
+        };
+
+        const newAchievements = getNewlyUnlockedAchievements(gameState, this.progress, this.unlockedAchievements);
+
+        for (const achievement of newAchievements) {
+            this.unlockedAchievements.push(achievement.id);
+            this.showAchievementToast(achievement);
+        }
+
+        if (newAchievements.length > 0) {
+            this.progress.unlockedAchievements = this.unlockedAchievements;
+            saveProgress(this.progress);
+        }
+    }
+
+    showAchievementToast(achievement) {
+        const toast = document.createElement('div');
+        toast.className = 'achievement-toast';
+        // Note: Achievement data (icon, name) comes from trusted ACHIEVEMENTS constant
+        toast.innerHTML = `
+            <div class="toast-icon">${achievement.icon}</div>
+            <div class="toast-content">
+                <div class="toast-title">ACHIEVEMENT UNLOCKED!</div>
+                <div class="toast-name">${achievement.name}</div>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+        this.audio.playSound('levelUp');
+        this.haptics.trigger('levelUp');
+    }
+
+    // ========================================================================
     // HIGH SCORES
     // ========================================================================
 
@@ -2731,155 +3116,196 @@ class CodeBreakout {
     // STATISTICS DASHBOARD
     // ========================================================================
 
-    async showStats() {
-        const loadingEl = document.getElementById('stats-loading');
-        const gridEl = document.getElementById('stats-grid');
-        const chartSection = document.getElementById('stats-chart-section');
-        const modeSection = document.getElementById('stats-mode-section');
-
-        // Show loading state
-        loadingEl.classList.remove('hidden');
-        gridEl.classList.add('hidden');
-        chartSection.classList.add('hidden');
-        modeSection.classList.add('hidden');
-
+    showStats() {
+        this.progress = loadProgress();
         this.showScreen('stats');
+        this.populateStats();
+    }
 
-        // Fetch stats
-        const stats = await fetchGameStats();
+    populateStats() {
+        const p = this.progress;
 
-        if (!stats) {
-            loadingEl.textContent = 'Statistics unavailable';
-            return;
-        }
+        // Progress stats
+        document.getElementById('stat-games').textContent = p.gamesPlayed || 0;
+        document.getElementById('stat-time').textContent = this.formatPlayTime(p.totalPlayTime || 0);
+        document.getElementById('stat-levels').textContent = p.levelsCompleted || 0;
+        document.getElementById('stat-perfect').textContent = p.perfectLevels || 0;
 
-        // Hide loading, show content
-        loadingEl.classList.add('hidden');
-        gridEl.classList.remove('hidden');
+        // Records
+        document.getElementById('stat-best-score').textContent = (p.bestScore || 0).toLocaleString();
+        document.getElementById('stat-total-score').textContent = (p.totalScore || 0).toLocaleString();
+        document.getElementById('stat-max-combo').textContent = `${(p.maxCombo || 1).toFixed(1)}x`;
+        document.getElementById('stat-bonus').textContent = p.bonusCompleted || 0;
 
-        // Update stat cards
-        document.getElementById('stat-total-games').textContent = stats.totalGames.toLocaleString();
-        document.getElementById('stat-today-games').textContent = stats.gamesToday.toLocaleString();
+        // Unlocks
+        const achievementCount = (p.unlockedAchievements || []).length;
+        const cosmeticCount = (p.unlockedCosmetics || ['default']).length;
+        document.getElementById('stat-achievements').textContent = `${achievementCount}/12`;
+        document.getElementById('stat-cosmetics').textContent = `${cosmeticCount}/18`;
 
-        // Format play time
-        const hours = Math.floor(stats.totalPlayTimeMinutes / 60);
-        const mins = stats.totalPlayTimeMinutes % 60;
-        document.getElementById('stat-total-time').textContent = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+        // Playstyle
+        const playstyle = this.analyzePlaystyle(p);
+        document.getElementById('playstyle-badge').innerHTML = `
+            <span class="playstyle-icon">${playstyle.icon}</span>
+            <span class="playstyle-name">${playstyle.name}</span>
+        `;
+        document.getElementById('playstyle-desc').textContent = playstyle.desc;
 
-        document.getElementById('stat-avg-score').textContent = stats.averageScore.toLocaleString();
+        // Fetch and display global community stats
+        this.loadGlobalStats();
+    }
 
-        // Format average session
-        const avgMins = Math.floor(stats.averageSessionSeconds / 60);
-        const avgSecs = stats.averageSessionSeconds % 60;
-        document.getElementById('stat-avg-session').textContent = `${avgMins}:${avgSecs.toString().padStart(2, '0')}`;
+    async loadGlobalStats() {
+        try {
+            const stats = await fetchGameStats();
+            if (stats) {
+                // Basic stats
+                document.getElementById('global-total-games').textContent = (stats.totalGames || 0).toLocaleString();
+                document.getElementById('global-avg-score').textContent = (stats.avgScore || 0).toLocaleString();
+                document.getElementById('global-high-score').textContent = (stats.highScore || 0).toLocaleString();
+                document.getElementById('global-players').textContent = (stats.uniquePlayers || 0).toLocaleString();
+                document.getElementById('global-today').textContent = (stats.gamesToday || 0).toLocaleString();
+                document.getElementById('global-week').textContent = (stats.gamesThisWeek || 0).toLocaleString();
 
-        // Build daily chart
-        if (stats.dailyGames && stats.dailyGames.length > 0) {
-            chartSection.classList.remove('hidden');
-            this.buildDailyChart(stats.dailyGames);
-        }
+                // Weekly chart
+                this.renderWeeklyChart(stats.weeklyActivity || []);
 
-        // Build mode bars
-        if (stats.gamesByMode && Object.keys(stats.gamesByMode).length > 0) {
-            modeSection.classList.remove('hidden');
-            this.buildModeBars(stats.gamesByMode);
+                // Mode stats
+                this.renderModeStats(stats.gamesByMode || {});
+            } else {
+                this.showOfflineStats();
+            }
+        } catch (e) {
+            this.showOfflineStats();
         }
     }
 
-    buildDailyChart(dailyGames) {
-        const chartEl = document.getElementById('daily-chart');
-        chartEl.textContent = '';
+    showOfflineStats() {
+        document.getElementById('global-total-games').textContent = 'Offline';
+        document.getElementById('global-avg-score').textContent = '-';
+        document.getElementById('global-high-score').textContent = '-';
+        document.getElementById('global-players').textContent = '-';
+        document.getElementById('global-today').textContent = '-';
+        document.getElementById('global-week').textContent = '-';
 
-        // Fill in missing days for last 7 days
-        const days = [];
-        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        const today = new Date();
+        // Hide charts when offline
+        const weeklyChart = document.getElementById('weekly-chart');
+        const modeStats = document.getElementById('mode-stats');
+        if (weeklyChart) weeklyChart.style.display = 'none';
+        if (modeStats) modeStats.style.display = 'none';
+    }
 
-        for (let i = 6; i >= 0; i--) {
-            const date = new Date(today);
-            date.setDate(date.getDate() - i);
-            const dateStr = date.toISOString().split('T')[0];
-            const dayData = dailyGames.find(d => d.date && d.date.startsWith(dateStr));
-            days.push({
-                label: dayNames[date.getDay()],
-                count: dayData ? dayData.count : 0,
-            });
-        }
+    renderWeeklyChart(weeklyData) {
+        const chartBars = document.querySelectorAll('#chart-bars .chart-bar');
+        const maxValue = Math.max(...weeklyData, 1);
 
-        const maxCount = Math.max(...days.map(d => d.count), 1);
-
-        days.forEach(day => {
-            const bar = document.createElement('div');
-            bar.className = 'chart-bar';
-
-            const value = document.createElement('span');
-            value.className = 'chart-bar-value';
-            value.textContent = day.count;
-
-            const fill = document.createElement('div');
-            fill.className = 'chart-bar-fill';
-            const height = Math.max(4, (day.count / maxCount) * 70);
-            fill.style.height = `${height}px`;
-
-            const label = document.createElement('span');
-            label.className = 'chart-bar-label';
-            label.textContent = day.label;
-
-            bar.appendChild(value);
-            bar.appendChild(fill);
-            bar.appendChild(label);
-            chartEl.appendChild(bar);
+        chartBars.forEach((bar, i) => {
+            const value = weeklyData[i] || 0;
+            const height = (value / maxValue) * 50; // max 50px
+            const fill = bar.querySelector('.bar-fill');
+            if (fill) {
+                fill.style.height = `${Math.max(height, 4)}px`;
+            }
         });
+
+        // Show chart
+        const weeklyChart = document.getElementById('weekly-chart');
+        if (weeklyChart) weeklyChart.style.display = 'block';
     }
 
-    buildModeBars(gamesByMode) {
-        const barsEl = document.getElementById('mode-bars');
-        barsEl.textContent = '';
+    renderModeStats(modeData) {
+        const container = document.getElementById('mode-bars');
+        if (!container) return;
 
-        const modeLabels = {
-            classic: 'Classic',
-            campaign: 'Campaign',
-            easy: 'Easy',
-            roguelike: 'Roguelike',
-            zen: 'Zen',
-            bounce: 'Bounce',
-            bullet: 'Bullet Hell',
-            tower: 'Tower',
-            madness: 'Madness',
-            boss: 'Boss',
-            speed: 'Speed Run',
+        const modes = [
+            { key: 'campaign', label: 'Campaign' },
+            { key: 'easy', label: 'Easy' },
+            { key: 'roguelike', label: 'Roguelike' },
+            { key: 'relax', label: 'Zen' },
+        ];
+
+        const total = Object.values(modeData).reduce((sum, val) => sum + val, 0) || 1;
+
+        container.innerHTML = modes.map(mode => {
+            const value = modeData[mode.key] || 0;
+            const percent = (value / total) * 100;
+            return `
+                <div class="mode-bar-row">
+                    <span class="mode-bar-label">${mode.label}</span>
+                    <div class="mode-bar-track">
+                        <div class="mode-bar-fill ${mode.key}" style="width: ${percent}%"></div>
+                    </div>
+                    <span class="mode-bar-value">${value}</span>
+                </div>
+            `;
+        }).join('');
+
+        // Show mode stats
+        const modeStats = document.getElementById('mode-stats');
+        if (modeStats) modeStats.style.display = 'block';
+    }
+
+    formatPlayTime(ms) {
+        const hours = Math.floor(ms / 3600000);
+        const minutes = Math.floor((ms % 3600000) / 60000);
+        if (hours > 0) {
+            return `${hours}h ${minutes}m`;
+        }
+        return `${minutes}m`;
+    }
+
+    analyzePlaystyle(progress) {
+        const styles = {
+            newcomer: { icon: '🎮', name: 'Newcomer', desc: 'Play more to discover your style!' },
+            aggressive: { icon: '🔥', name: 'Aggressive', desc: 'High combo master! You love chaining hits.' },
+            perfectionist: { icon: '✨', name: 'Perfectionist', desc: 'Flawless execution. Not a single life lost.' },
+            speedrunner: { icon: '⚡', name: 'Speedrunner', desc: 'Fast and furious! Time is of the essence.' },
+            explorer: { icon: '🗺️', name: 'Explorer', desc: 'Bonus mode enthusiast. Always seeking new challenges.' },
+            completionist: { icon: '🏆', name: 'Completionist', desc: 'Achievement hunter. You want it all!' },
+            veteran: { icon: '⭐', name: 'Veteran', desc: 'Dedicated player. Countless hours of brick-breaking!' },
+            legend: { icon: '👑', name: 'Legend', desc: 'Master of CODEBREAKOUT. A true champion!' },
         };
 
-        const entries = Object.entries(gamesByMode).sort((a, b) => b[1] - a[1]);
-        const maxCount = Math.max(...entries.map(([, count]) => count), 1);
+        // Not enough data
+        if ((progress.gamesPlayed || 0) < 3) {
+            return styles.newcomer;
+        }
 
-        entries.forEach(([mode, count]) => {
-            const bar = document.createElement('div');
-            bar.className = `mode-bar ${mode}`;
+        const perfectRatio = (progress.perfectLevels || 0) / Math.max(1, progress.levelsCompleted || 1);
+        const achievementRatio = ((progress.unlockedAchievements || []).length) / 12;
+        const cosmeticRatio = ((progress.unlockedCosmetics || []).length) / 18;
 
-            const name = document.createElement('span');
-            name.className = 'mode-bar-name';
-            name.textContent = modeLabels[mode] || mode;
+        // Legend - everything unlocked
+        if (achievementRatio > 0.9 && cosmeticRatio > 0.9) {
+            return styles.legend;
+        }
 
-            const track = document.createElement('div');
-            track.className = 'mode-bar-track';
+        // Completionist - many achievements
+        if (achievementRatio > 0.6) {
+            return styles.completionist;
+        }
 
-            const fill = document.createElement('div');
-            fill.className = 'mode-bar-fill';
-            const width = Math.max(10, (count / maxCount) * 100);
-            fill.style.width = `${width}%`;
+        // Perfectionist - high perfect ratio
+        if (perfectRatio > 0.5 && (progress.perfectLevels || 0) >= 3) {
+            return styles.perfectionist;
+        }
 
-            const countSpan = document.createElement('span');
-            countSpan.className = 'mode-bar-count';
-            countSpan.textContent = count;
+        // Aggressive - high combo
+        if ((progress.maxCombo || 0) >= 4) {
+            return styles.aggressive;
+        }
 
-            fill.appendChild(countSpan);
-            track.appendChild(fill);
+        // Explorer - many bonus modes
+        if ((progress.bonusCompleted || 0) >= 4) {
+            return styles.explorer;
+        }
 
-            bar.appendChild(name);
-            bar.appendChild(track);
-            barsEl.appendChild(bar);
-        });
+        // Veteran - lots of games
+        if ((progress.gamesPlayed || 0) >= 20) {
+            return styles.veteran;
+        }
+
+        return styles.newcomer;
     }
 
     // ========================================================================

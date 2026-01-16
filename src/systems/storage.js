@@ -282,3 +282,94 @@ export async function fetchGameStats() {
     }
     return null;
 }
+
+// ============================================================================
+// PLAYER PROGRESS PERSISTENCE
+// ============================================================================
+
+const PROGRESS_KEY = 'codebreakout_progress';
+
+/**
+ * Load player progress from localStorage
+ * @returns {object} Player progress object with defaults
+ */
+export function loadProgress() {
+    const defaults = {
+        totalScore: 0,
+        bestScore: 0,
+        levelsCompleted: 0,
+        perfectLevels: 0,
+        maxCombo: 1,
+        bonusCompleted: 0,
+        gamesPlayed: 0,
+        totalPlayTime: 0,
+        unlockedCosmetics: ['default'],
+        unlockedAchievements: [],
+        selectedPaddle: 'default',
+        selectedTrail: 'default',
+        selectedBackground: 'default',
+    };
+    try {
+        const saved = localStorage.getItem(PROGRESS_KEY);
+        if (saved) {
+            // Merge saved data with defaults to handle missing properties
+            return { ...defaults, ...JSON.parse(saved) };
+        }
+        return defaults;
+    } catch (e) {
+        return defaults;
+    }
+}
+
+/**
+ * Save player progress to localStorage
+ * @param {object} progress - Player progress object
+ */
+export function saveProgress(progress) {
+    try {
+        localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
+    } catch (e) {
+        // Ignore storage errors
+    }
+}
+
+/**
+ * Update player progress with partial updates
+ * @param {object} updates - Partial progress updates
+ * @returns {object} Updated progress object
+ */
+export function updateProgress(updates) {
+    const progress = loadProgress();
+    Object.assign(progress, updates);
+    saveProgress(progress);
+    return progress;
+}
+
+/**
+ * Unlock a cosmetic item for the player
+ * @param {string} cosmeticId - ID of the cosmetic to unlock
+ * @returns {object} Updated progress object
+ */
+export function unlockCosmetic(cosmeticId) {
+    const progress = loadProgress();
+    if (!progress.unlockedCosmetics.includes(cosmeticId)) {
+        progress.unlockedCosmetics.push(cosmeticId);
+        saveProgress(progress);
+    }
+    return progress;
+}
+
+/**
+ * Select a cosmetic item
+ * @param {string} type - Type of cosmetic ('paddle', 'trail', 'background')
+ * @param {string} id - ID of the cosmetic to select
+ * @returns {object} Updated progress object
+ */
+export function selectCosmetic(type, id) {
+    const progress = loadProgress();
+    if (type === 'paddle') progress.selectedPaddle = id;
+    if (type === 'trail') progress.selectedTrail = id;
+    if (type === 'background') progress.selectedBackground = id;
+    saveProgress(progress);
+    return progress;
+}

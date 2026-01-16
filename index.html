@@ -42,6 +42,8 @@
                 <button id="bonus-mode-btn" class="btn secondary">BONUS MODE</button>
                 <button id="highscores-btn" class="btn secondary">HIGH SCORES</button>
                 <button id="stats-btn" class="btn secondary stats">STATISTICS</button>
+                <button id="customize-btn" class="btn secondary">CUSTOMIZE</button>
+                <button id="achievements-btn" class="btn secondary">ACHIEVEMENTS</button>
                 <div class="high-score-preview">
                     <span>BEST:</span>
                     <span id="high-score-display" class="glow-text">0</span>
@@ -147,19 +149,19 @@
             <div id="level-stats">
                 <div class="stat">
                     <span class="label">Time</span>
-                    <span id="stat-time">0:00</span>
+                    <span id="level-stat-time">0:00</span>
                 </div>
                 <div class="stat">
                     <span class="label">Bricks</span>
-                    <span id="stat-bricks">0</span>
+                    <span id="level-stat-bricks">0</span>
                 </div>
                 <div class="stat">
                     <span class="label">Max Combo</span>
-                    <span id="stat-combo">x1.00</span>
+                    <span id="level-stat-combo">x1.00</span>
                 </div>
                 <div class="stat">
                     <span class="label">Level Score</span>
-                    <span id="stat-score">0</span>
+                    <span id="level-stat-score">0</span>
                 </div>
             </div>
             <h3 id="next-level-name">Next: CSS</h3>
@@ -186,7 +188,11 @@
                     <h3>TOP SCORES</h3>
                     <ol id="leaderboard-list"></ol>
                 </div>
-                <button id="play-again-btn" class="btn primary glow-btn">PLAY AGAIN</button>
+                <div class="game-over-buttons">
+                    <button id="retry-bonus-btn" class="btn secondary hidden">RETRY</button>
+                    <button id="back-to-menu-btn" class="btn secondary hidden">BACK</button>
+                    <button id="play-again-btn" class="btn primary glow-btn">PLAY AGAIN</button>
+                </div>
                 <div class="share-buttons">
                     <span class="share-label">Share your score:</span>
                     <div class="share-btn-row">
@@ -261,48 +267,142 @@
         </div>
 
         <!-- Statistics Dashboard Screen -->
-        <div id="stats-screen" class="screen overlay hidden animated-bg">
-            <div class="stats-content pulse-border">
-                <h2 class="glow-text">STATISTICS</h2>
-                <div class="stats-loading" id="stats-loading">Loading...</div>
-                <div class="stats-grid" id="stats-grid">
-                    <!-- Main stats cards -->
-                    <div class="stat-card">
-                        <span class="stat-value" id="stat-total-games">0</span>
-                        <span class="stat-label">Total Games</span>
+        <div id="stats-screen" class="screen hidden">
+            <h1>MY STATS</h1>
+            <div class="stats-container">
+                <div class="stats-section">
+                    <h3>Progress</h3>
+                    <div class="stat-row">
+                        <span class="stat-label">Games Played</span>
+                        <span class="stat-value" id="stat-games">0</span>
                     </div>
-                    <div class="stat-card">
-                        <span class="stat-value" id="stat-today-games">0</span>
-                        <span class="stat-label">Games Today</span>
+                    <div class="stat-row">
+                        <span class="stat-label">Total Play Time</span>
+                        <span class="stat-value" id="stat-time">0:00</span>
                     </div>
-                    <div class="stat-card">
-                        <span class="stat-value" id="stat-total-time">0h</span>
-                        <span class="stat-label">Play Time</span>
+                    <div class="stat-row">
+                        <span class="stat-label">Levels Completed</span>
+                        <span class="stat-value" id="stat-levels">0</span>
                     </div>
-                    <div class="stat-card">
-                        <span class="stat-value" id="stat-avg-score">0</span>
-                        <span class="stat-label">Avg Score</span>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-value" id="stat-avg-session">0m</span>
-                        <span class="stat-label">Avg Session</span>
+                    <div class="stat-row">
+                        <span class="stat-label">Perfect Levels</span>
+                        <span class="stat-value" id="stat-perfect">0</span>
                     </div>
                 </div>
-
-                <!-- Daily chart -->
-                <div class="stats-section" id="stats-chart-section">
-                    <h3>Last 7 Days</h3>
-                    <div class="daily-chart" id="daily-chart"></div>
+                <div class="stats-section">
+                    <h3>Records</h3>
+                    <div class="stat-row">
+                        <span class="stat-label">Best Score</span>
+                        <span class="stat-value" id="stat-best-score">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Total Score</span>
+                        <span class="stat-value" id="stat-total-score">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Max Combo</span>
+                        <span class="stat-value" id="stat-max-combo">0x</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Bonus Modes Completed</span>
+                        <span class="stat-value" id="stat-bonus">0</span>
+                    </div>
                 </div>
-
-                <!-- Games by mode -->
-                <div class="stats-section" id="stats-mode-section">
-                    <h3>Games by Mode</h3>
-                    <div class="mode-bars" id="mode-bars"></div>
+                <div class="stats-section">
+                    <h3>Unlocks</h3>
+                    <div class="stat-row">
+                        <span class="stat-label">Achievements</span>
+                        <span class="stat-value" id="stat-achievements">0/12</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Cosmetics</span>
+                        <span class="stat-value" id="stat-cosmetics">0/18</span>
+                    </div>
                 </div>
-
-                <button id="stats-back-btn" class="btn secondary">BACK</button>
+                <div class="stats-section playstyle">
+                    <h3>Your Playstyle</h3>
+                    <div class="playstyle-badge" id="playstyle-badge">
+                        <span class="playstyle-icon">🎮</span>
+                        <span class="playstyle-name">Newcomer</span>
+                    </div>
+                    <p class="playstyle-desc" id="playstyle-desc">Play more to discover your style!</p>
+                </div>
+                <div class="stats-section global-stats">
+                    <h3>🌐 Community Stats</h3>
+                    <div class="global-stats-grid">
+                        <div class="stat-row">
+                            <span class="stat-label">Total Games</span>
+                            <span class="stat-value" id="global-total-games">-</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Average Score</span>
+                            <span class="stat-value" id="global-avg-score">-</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">All-Time High</span>
+                            <span class="stat-value" id="global-high-score">-</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Active Players</span>
+                            <span class="stat-value" id="global-players">-</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Games Today</span>
+                            <span class="stat-value" id="global-today">-</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">This Week</span>
+                            <span class="stat-value" id="global-week">-</span>
+                        </div>
+                    </div>
+                    <div class="weekly-chart" id="weekly-chart">
+                        <h4>Weekly Activity</h4>
+                        <div class="chart-bars" id="chart-bars">
+                            <div class="chart-bar" data-day="Mon"><div class="bar-fill"></div><span>M</span></div>
+                            <div class="chart-bar" data-day="Tue"><div class="bar-fill"></div><span>T</span></div>
+                            <div class="chart-bar" data-day="Wed"><div class="bar-fill"></div><span>W</span></div>
+                            <div class="chart-bar" data-day="Thu"><div class="bar-fill"></div><span>T</span></div>
+                            <div class="chart-bar" data-day="Fri"><div class="bar-fill"></div><span>F</span></div>
+                            <div class="chart-bar" data-day="Sat"><div class="bar-fill"></div><span>S</span></div>
+                            <div class="chart-bar" data-day="Sun"><div class="bar-fill"></div><span>S</span></div>
+                        </div>
+                    </div>
+                    <div class="mode-stats" id="mode-stats">
+                        <h4>Games by Mode</h4>
+                        <div class="mode-bars" id="mode-bars"></div>
+                    </div>
+                </div>
             </div>
+            <button id="stats-back-btn" class="btn secondary">BACK</button>
+        </div>
+
+        <!-- Customize Screen -->
+        <div id="customize-screen" class="screen hidden">
+            <h1>CUSTOMIZE</h1>
+            <div class="customize-tabs">
+                <button class="tab-btn active" data-tab="paddles">PADDLE</button>
+                <button class="tab-btn" data-tab="trails">TRAIL</button>
+                <button class="tab-btn" data-tab="backgrounds">BACKGROUND</button>
+            </div>
+            <div class="cosmetic-grid" id="cosmetic-grid">
+                <!-- Populated by JS -->
+            </div>
+            <div class="cosmetic-preview">
+                <canvas id="preview-canvas" width="200" height="100"></canvas>
+            </div>
+            <button id="customize-back-btn" class="btn secondary">BACK</button>
+        </div>
+
+        <!-- Achievements Screen -->
+        <div id="achievements-screen" class="screen hidden">
+            <h1>ACHIEVEMENTS</h1>
+            <div class="achievements-grid" id="achievements-grid">
+                <!-- Populated by JS -->
+            </div>
+            <div class="achievements-progress">
+                <span id="achievements-count">0/12</span> Unlocked
+            </div>
+            <button id="achievements-back-btn" class="btn secondary">BACK</button>
         </div>
     </div>
 

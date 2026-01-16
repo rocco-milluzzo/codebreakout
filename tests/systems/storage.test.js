@@ -7,6 +7,11 @@ import {
     isHighScore,
     updateHighScoreDisplay,
     displayLeaderboard,
+    loadProgress,
+    saveProgress,
+    updateProgress,
+    unlockCosmetic,
+    selectCosmetic,
 } from '../../src/systems/storage.js';
 
 describe('Storage System', () => {
@@ -348,6 +353,227 @@ describe('Storage System', () => {
             const { addHighScore: freshAddHighScore } = await import('../../src/systems/storage.js');
             const scores = await freshAddHighScore([], 'FallbackPlayer', 1500, 'Level 3');
             expect(scores.length).toBe(1);
+        });
+    });
+
+    // ========================================================================
+    // PLAYER PROGRESS PERSISTENCE TESTS
+    // ========================================================================
+
+    describe('loadProgress', () => {
+        it('should return default progress when no data saved', () => {
+            const progress = loadProgress();
+            expect(progress.totalScore).toBe(0);
+            expect(progress.levelsCompleted).toBe(0);
+            expect(progress.perfectLevels).toBe(0);
+            expect(progress.maxCombo).toBe(1); // Multiplier starts at 1x
+            expect(progress.bonusCompleted).toBe(0);
+            expect(progress.gamesPlayed).toBe(0);
+            expect(progress.totalPlayTime).toBe(0);
+            expect(progress.unlockedCosmetics).toEqual(['default']);
+            expect(progress.selectedPaddle).toBe('default');
+            expect(progress.selectedTrail).toBe('default');
+            expect(progress.selectedBackground).toBe('default');
+        });
+
+        it('should load saved progress from localStorage', () => {
+            const savedProgress = {
+                totalScore: 5000,
+                levelsCompleted: 10,
+                perfectLevels: 3,
+                maxCombo: 15,
+                bonusCompleted: 2,
+                gamesPlayed: 25,
+                totalPlayTime: 3600,
+                unlockedCosmetics: ['default', 'neon', 'retro'],
+                selectedPaddle: 'neon',
+                selectedTrail: 'fire',
+                selectedBackground: 'space',
+            };
+            localStorageMock.store['codebreakout_progress'] = JSON.stringify(savedProgress);
+
+            const progress = loadProgress();
+            expect(progress.totalScore).toBe(5000);
+            expect(progress.levelsCompleted).toBe(10);
+            expect(progress.perfectLevels).toBe(3);
+            expect(progress.maxCombo).toBe(15);
+            expect(progress.bonusCompleted).toBe(2);
+            expect(progress.gamesPlayed).toBe(25);
+            expect(progress.totalPlayTime).toBe(3600);
+            expect(progress.unlockedCosmetics).toEqual(['default', 'neon', 'retro']);
+            expect(progress.selectedPaddle).toBe('neon');
+            expect(progress.selectedTrail).toBe('fire');
+            expect(progress.selectedBackground).toBe('space');
+        });
+
+        it('should handle JSON parse errors gracefully', () => {
+            localStorageMock.store['codebreakout_progress'] = 'invalid json';
+            const progress = loadProgress();
+            expect(progress.totalScore).toBe(0);
+            expect(progress.unlockedCosmetics).toEqual(['default']);
+        });
+
+        it('should handle localStorage errors gracefully', () => {
+            localStorageMock.getItem = vi.fn(() => {
+                throw new Error('Storage error');
+            });
+            const progress = loadProgress();
+            expect(progress.totalScore).toBe(0);
+            expect(progress.unlockedCosmetics).toEqual(['default']);
+        });
+    });
+
+    describe('saveProgress', () => {
+        it('should save progress to localStorage', () => {
+            const progress = {
+                totalScore: 1000,
+                levelsCompleted: 5,
+                perfectLevels: 1,
+                maxCombo: 8,
+                bonusCompleted: 0,
+                gamesPlayed: 10,
+                totalPlayTime: 1800,
+                unlockedCosmetics: ['default'],
+                selectedPaddle: 'default',
+                selectedTrail: 'default',
+                selectedBackground: 'default',
+            };
+            saveProgress(progress);
+            expect(localStorageMock.setItem).toHaveBeenCalledWith(
+                'codebreakout_progress',
+                JSON.stringify(progress)
+            );
+        });
+
+        it('should handle storage errors gracefully', () => {
+            localStorageMock.setItem = vi.fn(() => {
+                throw new Error('Storage quota exceeded');
+            });
+            expect(() => saveProgress({ totalScore: 1000 })).not.toThrow();
+        });
+    });
+
+    describe('updateProgress', () => {
+        it('should update specific fields while preserving others', () => {
+            const initialProgress = {
+                totalScore: 1000,
+                levelsCompleted: 5,
+                perfectLevels: 0,
+                maxCombo: 5,
+                bonusCompleted: 0,
+                gamesPlayed: 10,
+                totalPlayTime: 1800,
+                unlockedCosmetics: ['default'],
+                selectedPaddle: 'default',
+                selectedTrail: 'default',
+                selectedBackground: 'default',
+            };
+            localStorageMock.store['codebreakout_progress'] = JSON.stringify(initialProgress);
+
+            const updated = updateProgress({ totalScore: 2000, levelsCompleted: 8 });
+
+            expect(updated.totalScore).toBe(2000);
+            expect(updated.levelsCompleted).toBe(8);
+            expect(updated.gamesPlayed).toBe(10); // preserved
+            expect(updated.unlockedCosmetics).toEqual(['default']); // preserved
+        });
+
+        it('should save updates to localStorage', () => {
+            updateProgress({ totalScore: 500 });
+            expect(localStorageMock.setItem).toHaveBeenCalled();
+        });
+
+        it('should return updated progress object', () => {
+            const result = updateProgress({ maxCombo: 20 });
+            expect(result.maxCombo).toBe(20);
+        });
+    });
+
+    describe('unlockCosmetic', () => {
+        it('should add new cosmetic to unlockedCosmetics', () => {
+            const progress = unlockCosmetic('neon');
+            expect(progress.unlockedCosmetics).toContain('default');
+            expect(progress.unlockedCosmetics).toContain('neon');
+        });
+
+        it('should not add duplicate cosmetics', () => {
+            localStorageMock.store['codebreakout_progress'] = JSON.stringify({
+                totalScore: 0,
+                levelsCompleted: 0,
+                perfectLevels: 0,
+                maxCombo: 0,
+                bonusCompleted: 0,
+                gamesPlayed: 0,
+                totalPlayTime: 0,
+                unlockedCosmetics: ['default', 'neon'],
+                selectedPaddle: 'default',
+                selectedTrail: 'default',
+                selectedBackground: 'default',
+            });
+
+            const progress = unlockCosmetic('neon');
+            const neonCount = progress.unlockedCosmetics.filter(c => c === 'neon').length;
+            expect(neonCount).toBe(1);
+        });
+
+        it('should save unlocked cosmetics to localStorage', () => {
+            unlockCosmetic('retro');
+            expect(localStorageMock.setItem).toHaveBeenCalled();
+        });
+
+        it('should return updated progress', () => {
+            const progress = unlockCosmetic('pixel');
+            expect(progress.unlockedCosmetics).toContain('pixel');
+        });
+    });
+
+    describe('selectCosmetic', () => {
+        it('should select paddle cosmetic', () => {
+            const progress = selectCosmetic('paddle', 'neon');
+            expect(progress.selectedPaddle).toBe('neon');
+        });
+
+        it('should select trail cosmetic', () => {
+            const progress = selectCosmetic('trail', 'fire');
+            expect(progress.selectedTrail).toBe('fire');
+        });
+
+        it('should select background cosmetic', () => {
+            const progress = selectCosmetic('background', 'space');
+            expect(progress.selectedBackground).toBe('space');
+        });
+
+        it('should preserve other selections when changing one', () => {
+            localStorageMock.store['codebreakout_progress'] = JSON.stringify({
+                totalScore: 0,
+                levelsCompleted: 0,
+                perfectLevels: 0,
+                maxCombo: 0,
+                bonusCompleted: 0,
+                gamesPlayed: 0,
+                totalPlayTime: 0,
+                unlockedCosmetics: ['default'],
+                selectedPaddle: 'neon',
+                selectedTrail: 'fire',
+                selectedBackground: 'space',
+            });
+
+            const progress = selectCosmetic('paddle', 'retro');
+            expect(progress.selectedPaddle).toBe('retro');
+            expect(progress.selectedTrail).toBe('fire'); // preserved
+            expect(progress.selectedBackground).toBe('space'); // preserved
+        });
+
+        it('should save selection to localStorage', () => {
+            selectCosmetic('paddle', 'neon');
+            expect(localStorageMock.setItem).toHaveBeenCalled();
+        });
+
+        it('should ignore invalid cosmetic types', () => {
+            const progress = selectCosmetic('invalid', 'something');
+            expect(progress.selectedPaddle).toBe('default');
+            expect(progress.selectedTrail).toBe('default');
+            expect(progress.selectedBackground).toBe('default');
         });
     });
 });

@@ -765,77 +765,146 @@ function drawPortalBrick(ctx, x, y, width, height, color) {
  * @param {object} paddle - Paddle object
  * @param {object} levelData - Current level configuration
  * @param {object} activePowerups - Active powerups state
+ * @param {object} cosmetic - Optional cosmetic customization
  */
-export function drawPaddle(ctx, paddle, levelData, activePowerups) {
-    const x = paddle.x;
-    const y = paddle.y;
-    const w = paddle.width;
-    const h = paddle.height;
+export function drawPaddle(ctx, paddle, levelData, activePowerups, cosmetic = null) {
+    const { x, y, width, height } = paddle;
+    const w = width;
+    const h = height;
     const cornerRadius = 4;
 
-    // Outer glow effect
     ctx.save();
-    ctx.shadowColor = levelData.color;
-    ctx.shadowBlur = 15 + 5 * Math.sin(animationTime * 3);
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
 
-    // Main body with rounded corners
-    ctx.beginPath();
-    ctx.roundRect(x, y, w, h, cornerRadius);
+    // Determine paddle color based on cosmetic
+    let paddleColor = levelData.color;
+    let glowColor = levelData.color;
 
-    // Metallic gradient
-    const bodyGradient = ctx.createLinearGradient(x, y, x, y + h);
-    bodyGradient.addColorStop(0, lightenColor(levelData.color, 0.4));
-    bodyGradient.addColorStop(0.2, levelData.color);
-    bodyGradient.addColorStop(0.5, darkenColor(levelData.color, 0.2));
-    bodyGradient.addColorStop(0.8, levelData.color);
-    bodyGradient.addColorStop(1, darkenColor(levelData.color, 0.4));
-    ctx.fillStyle = bodyGradient;
-    ctx.fill();
+    if (cosmetic) {
+        if (cosmetic.rainbow) {
+            // Rainbow effect - cycle through colors
+            const hue = (Date.now() / 20) % 360;
+            paddleColor = `hsl(${hue}, 100%, 50%)`;
+            glowColor = paddleColor;
+        } else if (cosmetic.color) {
+            paddleColor = cosmetic.color;
+            glowColor = cosmetic.color;
+        }
 
-    ctx.restore();
+        // Glow effect for neon
+        if (cosmetic.glow) {
+            ctx.shadowColor = glowColor;
+            ctx.shadowBlur = 15;
+        }
 
-    // Inner highlight strip (top)
-    const highlightGradient = ctx.createLinearGradient(x, y, x + w, y);
-    highlightGradient.addColorStop(0, 'rgba(255,255,255,0)');
-    highlightGradient.addColorStop(0.3, 'rgba(255,255,255,0.6)');
-    highlightGradient.addColorStop(0.5, 'rgba(255,255,255,0.8)');
-    highlightGradient.addColorStop(0.7, 'rgba(255,255,255,0.6)');
-    highlightGradient.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = highlightGradient;
-    ctx.fillRect(x + cornerRadius, y + 2, w - cornerRadius * 2, 3);
+        // Gold shine effect
+        if (cosmetic.shine) {
+            const shimmer = Math.sin(Date.now() / 200) * 0.3 + 0.7;
+            ctx.globalAlpha = shimmer;
+        }
+    }
 
-    // Edge accents (left and right neon strips)
-    const accentWidth = 6;
-    ctx.fillStyle = lightenColor(levelData.color, 0.5);
-    ctx.fillRect(x + 2, y + 3, accentWidth, h - 6);
-    ctx.fillRect(x + w - accentWidth - 2, y + 3, accentWidth, h - 6);
+    // Draw paddle body
+    if (cosmetic && cosmetic.pixelated) {
+        // Pixelated paddle - draw as blocks
+        ctx.fillStyle = paddleColor;
+        const blockSize = 5;
+        for (let bx = 0; bx < w; bx += blockSize) {
+            for (let by = 0; by < h; by += blockSize) {
+                ctx.fillRect(x + bx, y + by, blockSize - 1, blockSize - 1);
+            }
+        }
+        ctx.restore();
+    } else {
+        // Normal rounded paddle with full effects
+        ctx.restore();
 
-    // Neon border
-    ctx.strokeStyle = lightenColor(levelData.color, 0.3);
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.roundRect(x, y, w, h, cornerRadius);
-    ctx.stroke();
+        // Outer glow effect
+        ctx.save();
+        ctx.shadowColor = glowColor;
+        ctx.shadowBlur = 15 + 5 * Math.sin(animationTime * 3);
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
 
-    // Inner dark line for depth
-    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.roundRect(x + 1, y + 1, w - 2, h - 2, cornerRadius - 1);
-    ctx.stroke();
+        // Main body with rounded corners
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, cornerRadius);
 
-    // Center energy core
-    const coreX = x + w / 2;
-    const coreWidth = Math.min(40, w * 0.3);
-    const pulse = 0.6 + 0.4 * Math.sin(animationTime * 5);
-    const coreGradient = ctx.createRadialGradient(coreX, y + h / 2, 0, coreX, y + h / 2, coreWidth / 2);
-    coreGradient.addColorStop(0, `rgba(255,255,255,${pulse * 0.8})`);
-    coreGradient.addColorStop(0.5, adjustAlpha(levelData.color, pulse * 0.5));
-    coreGradient.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = coreGradient;
-    ctx.fillRect(coreX - coreWidth / 2, y, coreWidth, h);
+        // Metallic gradient
+        const bodyGradient = ctx.createLinearGradient(x, y, x, y + h);
+        bodyGradient.addColorStop(0, lightenColor(paddleColor, 0.4));
+        bodyGradient.addColorStop(0.2, paddleColor);
+        bodyGradient.addColorStop(0.5, darkenColor(paddleColor, 0.2));
+        bodyGradient.addColorStop(0.8, paddleColor);
+        bodyGradient.addColorStop(1, darkenColor(paddleColor, 0.4));
+        ctx.fillStyle = bodyGradient;
+        ctx.fill();
+
+        ctx.restore();
+
+        // Inner highlight strip (top)
+        const highlightGradient = ctx.createLinearGradient(x, y, x + w, y);
+        highlightGradient.addColorStop(0, 'rgba(255,255,255,0)');
+        highlightGradient.addColorStop(0.3, 'rgba(255,255,255,0.6)');
+        highlightGradient.addColorStop(0.5, 'rgba(255,255,255,0.8)');
+        highlightGradient.addColorStop(0.7, 'rgba(255,255,255,0.6)');
+        highlightGradient.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = highlightGradient;
+        ctx.fillRect(x + cornerRadius, y + 2, w - cornerRadius * 2, 3);
+
+        // Edge accents (left and right neon strips)
+        const accentWidth = 6;
+        ctx.fillStyle = lightenColor(paddleColor, 0.5);
+        ctx.fillRect(x + 2, y + 3, accentWidth, h - 6);
+        ctx.fillRect(x + w - accentWidth - 2, y + 3, accentWidth, h - 6);
+
+        // Neon border
+        ctx.strokeStyle = lightenColor(paddleColor, 0.3);
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, cornerRadius);
+        ctx.stroke();
+
+        // Inner dark line for depth
+        ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(x + 1, y + 1, w - 2, h - 2, cornerRadius - 1);
+        ctx.stroke();
+
+        // Center energy core
+        const coreX = x + w / 2;
+        const coreWidth = Math.min(40, w * 0.3);
+        const pulse = 0.6 + 0.4 * Math.sin(animationTime * 5);
+        const coreGradient = ctx.createRadialGradient(coreX, y + h / 2, 0, coreX, y + h / 2, coreWidth / 2);
+        coreGradient.addColorStop(0, `rgba(255,255,255,${pulse * 0.8})`);
+        coreGradient.addColorStop(0.5, adjustAlpha(paddleColor, pulse * 0.5));
+        coreGradient.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = coreGradient;
+        ctx.fillRect(coreX - coreWidth / 2, y, coreWidth, h);
+    }
+
+    // Fire particle effect for fire cosmetic
+    if (cosmetic && cosmetic.particles === 'fire') {
+        const firePulse = 0.6 + 0.4 * Math.sin(animationTime * 10);
+        ctx.save();
+        ctx.shadowColor = '#ff4400';
+        ctx.shadowBlur = 12 * firePulse;
+
+        for (let i = 0; i < 5; i++) {
+            const fx = x + w * 0.1 + (w * 0.8) * (i / 4);
+            const fy = y - 3 - Math.sin(animationTime * 8 + i) * 4;
+            const fsize = 2 + Math.sin(animationTime * 10 + i * 2) * 1.5;
+            const fireGradient = ctx.createRadialGradient(fx, fy, 0, fx, fy, fsize);
+            fireGradient.addColorStop(0, 'rgba(255,255,100,0.8)');
+            fireGradient.addColorStop(0.5, 'rgba(255,100,0,0.5)');
+            fireGradient.addColorStop(1, 'rgba(255,0,0,0)');
+            ctx.fillStyle = fireGradient;
+            ctx.beginPath();
+            ctx.arc(fx, fy, fsize, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.restore();
+    }
 
     // Magnet indicator (enhanced)
     if (paddle.hasMagnet) {
@@ -1292,6 +1361,7 @@ export function render(ctx, gameData) {
         floatingTexts,
         ballTrail,
         activePowerups,
+        paddleCosmetic,
     } = gameData;
 
     clearCanvas(ctx);
@@ -1304,11 +1374,11 @@ export function render(ctx, gameData) {
         drawShield(ctx);
     }
 
-    drawPaddle(ctx, paddle, levelData, activePowerups);
+    drawPaddle(ctx, paddle, levelData, activePowerups, paddleCosmetic);
 
     // Draw split paddle if active
     if (paddle.isSplit && paddle.splitPaddle) {
-        drawPaddle(ctx, paddle.splitPaddle, levelData, activePowerups);
+        drawPaddle(ctx, paddle.splitPaddle, levelData, activePowerups, paddleCosmetic);
     }
 
     drawBallTrail(ctx, ballTrail);
