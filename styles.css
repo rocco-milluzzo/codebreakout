@@ -2632,6 +2632,8 @@ body {
 #stats-screen {
     background: var(--bg-dark);
     padding: 20px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 #stats-screen h1 {
@@ -2850,6 +2852,10 @@ body {
 
 /* Mobile responsive for stats */
 @media (max-width: 600px) {
+    #stats-screen {
+        padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    }
+
     .stats-container {
         grid-template-columns: 1fr;
         gap: 15px;

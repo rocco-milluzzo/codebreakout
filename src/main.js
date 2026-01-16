@@ -1156,12 +1156,12 @@ class CodeBreakout {
 
         // Update progress
         this.progress = loadProgress();
-        this.progress.levelsCompleted++;
+        this.progress.levelsCompleted = (Number(this.progress.levelsCompleted) || 0) + 1;
         if (this.state.perfectLevel) {
-            this.progress.perfectLevels++;
+            this.progress.perfectLevels = (Number(this.progress.perfectLevels) || 0) + 1;
         }
-        this.progress.totalScore += this.state.score;
-        if (this.state.multiplier > this.progress.maxCombo) {
+        this.progress.totalScore = (Number(this.progress.totalScore) || 0) + this.state.score;
+        if (this.state.multiplier > (Number(this.progress.maxCombo) || 0)) {
             this.progress.maxCombo = this.state.multiplier;
         }
         saveProgress(this.progress);
@@ -1192,17 +1192,17 @@ class CodeBreakout {
 
         // Update local progress on game end
         this.progress = loadProgress();
-        this.progress.gamesPlayed = (this.progress.gamesPlayed || 0) + 1;
-        this.progress.totalPlayTime = (this.progress.totalPlayTime || 0) + (Date.now() - this.state.gameStartTime);
-        this.progress.totalScore = (this.progress.totalScore || 0) + this.state.score;
-        if (this.state.score > (this.progress.bestScore || 0)) {
+        this.progress.gamesPlayed = (Number(this.progress.gamesPlayed) || 0) + 1;
+        this.progress.totalPlayTime = (Number(this.progress.totalPlayTime) || 0) + (Date.now() - this.state.gameStartTime);
+        this.progress.totalScore = (Number(this.progress.totalScore) || 0) + this.state.score;
+        if (this.state.score > (Number(this.progress.bestScore) || 0)) {
             this.progress.bestScore = this.state.score;
         }
-        if (this.state.maxMultiplier > (this.progress.maxCombo || 0)) {
+        if (this.state.maxMultiplier > (Number(this.progress.maxCombo) || 0)) {
             this.progress.maxCombo = this.state.maxMultiplier;
         }
         if (this.bonusOnlyMode && victory) {
-            this.progress.bonusCompleted = (this.progress.bonusCompleted || 0) + 1;
+            this.progress.bonusCompleted = (Number(this.progress.bonusCompleted) || 0) + 1;
         }
         saveProgress(this.progress);
 
@@ -3126,16 +3126,16 @@ class CodeBreakout {
         const p = this.progress;
 
         // Progress stats
-        document.getElementById('stat-games').textContent = p.gamesPlayed || 0;
-        document.getElementById('stat-time').textContent = this.formatPlayTime(p.totalPlayTime || 0);
-        document.getElementById('stat-levels').textContent = p.levelsCompleted || 0;
-        document.getElementById('stat-perfect').textContent = p.perfectLevels || 0;
+        document.getElementById('stat-games').textContent = Number(p.gamesPlayed) || 0;
+        document.getElementById('stat-time').textContent = this.formatPlayTime(Number(p.totalPlayTime) || 0);
+        document.getElementById('stat-levels').textContent = Number(p.levelsCompleted) || 0;
+        document.getElementById('stat-perfect').textContent = Number(p.perfectLevels) || 0;
 
         // Records
-        document.getElementById('stat-best-score').textContent = (p.bestScore || 0).toLocaleString();
-        document.getElementById('stat-total-score').textContent = (p.totalScore || 0).toLocaleString();
-        document.getElementById('stat-max-combo').textContent = `${(p.maxCombo || 1).toFixed(1)}x`;
-        document.getElementById('stat-bonus').textContent = p.bonusCompleted || 0;
+        document.getElementById('stat-best-score').textContent = (Number(p.bestScore) || 0).toLocaleString();
+        document.getElementById('stat-total-score').textContent = (Number(p.totalScore) || 0).toLocaleString();
+        document.getElementById('stat-max-combo').textContent = `${(Number(p.maxCombo) || 1).toFixed(1)}x`;
+        document.getElementById('stat-bonus').textContent = Number(p.bonusCompleted) || 0;
 
         // Unlocks
         const achievementCount = (p.unlockedAchievements || []).length;
