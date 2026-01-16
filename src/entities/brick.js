@@ -232,7 +232,7 @@ export function getBrickPattern(patternName) {
             [0, 1, 1, 1, 1, 1, 1, 1, 1, 0],
         ],
 
-        // BONUS: Tower Defense - Starting rows at top
+        // BONUS: Invasion - Starting rows at top
         towerDefense: () => [
             [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             [1, 2, 1, 1, 2, 2, 1, 1, 2, 1],

@@ -1,0 +1,28 @@
+{
+  "name": "codebreakout",
+  "version": "1.0.0",
+  "description": "A programming-themed brick breaker game built with vanilla JavaScript. Progress through 15 levels, each themed around a programming language from HTML to Assembly, with increasing difficulty.",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rocco-milluzzo/codebreakout.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/rocco-milluzzo/codebreakout/issues"
+  },
+  "homepage": "https://github.com/rocco-milluzzo/codebreakout#readme",
+  "devDependencies": {
+    "@vitest/coverage-v8": "^4.0.17",
+    "jsdom": "^27.4.0",
+    "vitest": "^4.0.17"
+  }
+}

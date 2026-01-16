@@ -1074,7 +1074,7 @@ class CodeBreakout {
             }
         }
 
-        // TOWER DEFENSE: Bricks descend and spawn new rows (only after ball is launched)
+        // INVASION: Bricks descend and spawn new rows (only after ball is launched)
         if (levelData.bonus.type === 'towerDefense' && this.state.isLaunched) {
             // Move all bricks down
             for (const brick of this.bricks) {
@@ -2124,7 +2124,7 @@ class CodeBreakout {
         // Render boss
         this.renderBoss();
 
-        // Render tower defense danger zone
+        // Render invasion danger zone
         this.renderTowerDefenseZone();
 
         // Render speed run wave counter

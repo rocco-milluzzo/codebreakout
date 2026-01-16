@@ -228,8 +228,8 @@ export const LEVELS = [
         bonus: {
             type: 'doodle',
             duration: 60000,         // 1 minute
-            gravity: 0.25,           // Stronger gravity for faster gameplay
-            jumpForce: -12,          // Stronger jump to reach platforms
+            gravity: 0.45,           // Higher gravity for faster descent
+            jumpForce: -9.5,         // Reduced jump for tighter control
             brickRegenDelay: 1000,   // Regenerate bricks after 1 second
             noDeathPenalty: true,
         },
@@ -271,12 +271,12 @@ export const LEVELS = [
             noDeathPenalty: true,
         },
     },
-    // ========== BONUS STAGE 6: TOWER DEFENSE ==========
+    // ========== BONUS STAGE 6: INVASION ==========
     {
         id: 21,
-        name: 'TOWER DEFENSE',
+        name: 'INVASION',
         color: '#ff6600',
-        description: 'Stop the invasion!',
+        description: 'Stop the descent!',
         paddleWidth: 120,
         ballSpeed: 6,
         brickPattern: 'towerDefense',
