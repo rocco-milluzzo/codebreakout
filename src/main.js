@@ -2720,13 +2720,13 @@ class CodeBreakout {
 
     /**
      * Share score on Facebook
+     * Note: Facebook only accepts 'u' parameter now, title/description come from Open Graph meta tags
      */
     shareOnFacebook() {
         const gameUrl = this.getGameUrl();
-        const shareText = this.getShareText();
 
-        // Facebook share URL
-        const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(gameUrl)}&quote=${encodeURIComponent(shareText)}`;
+        // Facebook share URL (only 'u' parameter is supported, 'quote' was deprecated)
+        const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(gameUrl)}`;
 
         // Open in new window
         window.open(facebookUrl, '_blank', 'width=600,height=400,noopener,noreferrer');
