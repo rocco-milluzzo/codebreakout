@@ -70,7 +70,7 @@ export const LEVELS = [
         id: 6,
         name: 'ROGUELIKE',
         color: '#9b59b6',
-        description: 'Survive 5 minutes!',
+        description: 'Survive 2:30!',
         paddleWidth: 100,
         ballSpeed: 5,
         brickPattern: 'random',
@@ -79,7 +79,7 @@ export const LEVELS = [
         mechanics: ['bonus_stage'],
         bonus: {
             type: 'roguelike',
-            duration: 300000,        // 5 minutes
+            duration: 150000,        // 2.5 minutes
             brickRegenDelay: 10000,  // Bricks respawn after 10 seconds
             noDeathPenalty: true,
         },

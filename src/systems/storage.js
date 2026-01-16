@@ -231,3 +231,54 @@ export function displayLeaderboard(listElement, scores, currentScore = null, max
         listElement.appendChild(li);
     }
 }
+
+// ============================================================================
+// ANONYMOUS GAME STATISTICS
+// ============================================================================
+
+/**
+ * Record an anonymous game session
+ * @param {string} mode - Game mode
+ * @param {string} levelReached - Level name reached
+ * @param {number} playTimeSeconds - Session duration in seconds
+ * @param {number} score - Final score
+ */
+export async function recordGameSession(mode, levelReached, playTimeSeconds, score) {
+    const isApiAvailable = await checkApiAvailability();
+    if (!isApiAvailable) return;
+
+    try {
+        await fetch(`${API_BASE}/stats`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                mode,
+                levelReached,
+                playTimeSeconds: Math.floor(playTimeSeconds),
+                score: Math.floor(score),
+            }),
+        });
+    } catch (error) {
+        // Silently fail - stats are optional
+        console.debug('Failed to record game stats:', error);
+    }
+}
+
+/**
+ * Fetch aggregate game statistics
+ * @returns {Promise<object|null>} Statistics object or null if unavailable
+ */
+export async function fetchGameStats() {
+    const isApiAvailable = await checkApiAvailability();
+    if (!isApiAvailable) return null;
+
+    try {
+        const response = await fetch(`${API_BASE}/stats`);
+        if (response.ok) {
+            return await response.json();
+        }
+    } catch (error) {
+        console.debug('Failed to fetch game stats:', error);
+    }
+    return null;
+}

@@ -32,6 +32,7 @@
                 <button id="easy-mode-btn" class="btn secondary easy-mode">EASY MODE</button>
                 <button id="bonus-mode-btn" class="btn secondary">BONUS MODE</button>
                 <button id="highscores-btn" class="btn secondary">HIGH SCORES</button>
+                <button id="stats-btn" class="btn secondary stats">STATISTICS</button>
                 <div class="high-score-preview">
                     <span>BEST:</span>
                     <span id="high-score-display" class="glow-text">0</span>
@@ -39,6 +40,9 @@
             </div>
             <div class="controls-hint pulse-effect">
                 <p>Mouse / Arrow Keys / Touch</p>
+            </div>
+            <div class="credits">
+                <span>Created by <a href="https://www.linkedin.com/in/roccomilluzzo/" target="_blank" rel="noopener">Rocco Milluzzo</a></span>
             </div>
             <button id="sound-toggle" class="icon-btn" title="Toggle Sound">
                 <span id="sound-icon">🔊</span>
@@ -86,8 +90,25 @@
         <!-- Pause Screen -->
         <div id="pause-screen" class="screen overlay hidden">
             <h2 class="glow-text">PAUSED</h2>
+
+            <div class="audio-controls">
+                <div class="audio-control">
+                    <label for="music-volume">🎵 MUSIC</label>
+                    <input type="range" id="music-volume" min="0" max="100" value="30" class="volume-slider">
+                    <span id="music-volume-value">30%</span>
+                </div>
+                <div class="audio-control">
+                    <label for="sfx-volume">🔊 SOUND</label>
+                    <input type="range" id="sfx-volume" min="0" max="100" value="50" class="volume-slider">
+                    <span id="sfx-volume-value">50%</span>
+                </div>
+                <div class="audio-control haptic-control" id="haptic-control-container">
+                    <label>📳 HAPTICS</label>
+                    <button id="haptic-toggle" class="btn small toggle-btn active">ON</button>
+                </div>
+            </div>
+
             <button id="resume-btn" class="btn primary glow-btn">RESUME</button>
-            <button id="quit-btn" class="btn secondary danger">QUIT TO MENU</button>
         </div>
 
         <!-- Quit Confirmation Dialog -->
@@ -195,7 +216,7 @@
                 <div class="bonus-options">
                     <button id="bonus-roguelike-btn" class="btn bonus-btn roguelike">
                         <span class="bonus-name">ROGUELIKE</span>
-                        <span class="bonus-desc">Survive 5 minutes! Bricks regenerate.</span>
+                        <span class="bonus-desc">Survive 2:30! Bricks regenerate.</span>
                     </button>
                     <button id="bonus-zen-btn" class="btn bonus-btn zen">
                         <span class="bonus-name">ZEN MODE</span>
@@ -227,6 +248,51 @@
                     </button>
                 </div>
                 <button id="bonus-back-btn" class="btn secondary">BACK</button>
+            </div>
+        </div>
+
+        <!-- Statistics Dashboard Screen -->
+        <div id="stats-screen" class="screen overlay hidden animated-bg">
+            <div class="stats-content pulse-border">
+                <h2 class="glow-text">STATISTICS</h2>
+                <div class="stats-loading" id="stats-loading">Loading...</div>
+                <div class="stats-grid" id="stats-grid">
+                    <!-- Main stats cards -->
+                    <div class="stat-card">
+                        <span class="stat-value" id="stat-total-games">0</span>
+                        <span class="stat-label">Total Games</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="stat-today-games">0</span>
+                        <span class="stat-label">Games Today</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="stat-total-time">0h</span>
+                        <span class="stat-label">Play Time</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="stat-avg-score">0</span>
+                        <span class="stat-label">Avg Score</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="stat-avg-session">0m</span>
+                        <span class="stat-label">Avg Session</span>
+                    </div>
+                </div>
+
+                <!-- Daily chart -->
+                <div class="stats-section" id="stats-chart-section">
+                    <h3>Last 7 Days</h3>
+                    <div class="daily-chart" id="daily-chart"></div>
+                </div>
+
+                <!-- Games by mode -->
+                <div class="stats-section" id="stats-mode-section">
+                    <h3>Games by Mode</h3>
+                    <div class="mode-bars" id="mode-bars"></div>
+                </div>
+
+                <button id="stats-back-btn" class="btn secondary">BACK</button>
             </div>
         </div>
     </div>

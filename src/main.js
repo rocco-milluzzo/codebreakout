@@ -23,7 +23,9 @@ import { createInputManager } from './systems/input.js';
 import { checkPaddleCollision, checkBrickCollisions } from './systems/collision.js';
 import { render, updatePowerupIndicators } from './systems/render.js';
 import { createAudioManager } from './systems/audio.js';
-import { loadHighScores, addHighScore, updateHighScoreDisplay, displayLeaderboard } from './systems/storage.js';
+import { createParticleManager } from './systems/particles.js';
+import { createHapticManager } from './systems/haptics.js';
+import { loadHighScores, addHighScore, updateHighScoreDisplay, displayLeaderboard, recordGameSession, fetchGameStats } from './systems/storage.js';
 
 // Easter eggs
 import { getComboTier, getStreakQuote, checkSpecialAttack, createQuoteElement, createSpecialAttackElement } from './easterEggs.js';
@@ -43,15 +45,16 @@ class CodeBreakout {
         this.bricks = [];
         this.powerups = [];
         this.lasers = [];
-        this.particles = [];
+        this.legacyParticles = [];
         this.floatingTexts = [];
-        this.ballTrail = [];
         this.shield = null;
         this.portalPairs = [];
 
         // Systems
         this.input = createInputManager();
         this.audio = createAudioManager();
+        this.particles = createParticleManager();
+        this.haptics = createHapticManager();
         this.highScores = [];
 
         // Animation
@@ -157,6 +160,10 @@ class CodeBreakout {
         document.body.appendChild(quote);
         setTimeout(() => quote.remove(), 2500);
 
+        // Enhanced combo effects
+        this.particles.comboMilestone(this.canvas.width, this.canvas.height, tier.toLowerCase());
+        this.haptics.trigger('combo');
+
         // Screen flash for HIGH and EPIC tiers
         if (tier === 'HIGH' || tier === 'EPIC') {
             document.body.classList.add('streak-flash');
@@ -168,6 +175,7 @@ class CodeBreakout {
         if (this.state.screen !== 'game' || this.balls.length === 0) return;
 
         this.audio.playSound('laser');
+        this.haptics.trigger('specialAttack');
 
         // Show special attack quote
         const quoteEl = createSpecialAttackElement(type, attack);
@@ -271,10 +279,35 @@ class CodeBreakout {
         document.getElementById('easy-mode-btn').addEventListener('click', () => this.startGame('easy'));
         document.getElementById('highscores-btn').addEventListener('click', () => this.showHighScores());
         document.getElementById('highscores-back-btn').addEventListener('click', () => this.showScreen('start'));
+        document.getElementById('stats-btn').addEventListener('click', () => this.showStats());
+        document.getElementById('stats-back-btn').addEventListener('click', () => this.showScreen('start'));
         document.getElementById('pause-btn').addEventListener('click', () => this.togglePause());
         document.getElementById('resume-btn').addEventListener('click', () => this.togglePause());
+
+        // Volume controls
+        const musicSlider = document.getElementById('music-volume');
+        const sfxSlider = document.getElementById('sfx-volume');
+        const hapticToggle = document.getElementById('haptic-toggle');
+
+        musicSlider.addEventListener('input', (e) => {
+            const value = parseInt(e.target.value);
+            this.audio.setMusicVolume(value / 100);
+            document.getElementById('music-volume-value').textContent = `${value}%`;
+        });
+
+        sfxSlider.addEventListener('input', (e) => {
+            const value = parseInt(e.target.value);
+            this.audio.setSfxVolume(value / 100);
+            document.getElementById('sfx-volume-value').textContent = `${value}%`;
+        });
+
+        hapticToggle.addEventListener('click', () => {
+            const enabled = this.haptics.toggle();
+            hapticToggle.textContent = enabled ? 'ON' : 'OFF';
+            hapticToggle.classList.toggle('active', enabled);
+        });
+
         document.getElementById('menu-btn').addEventListener('click', () => this.showQuitConfirm());
-        document.getElementById('quit-btn').addEventListener('click', () => this.showQuitConfirm());
         document.getElementById('confirm-quit-btn').addEventListener('click', () => this.confirmQuit());
         document.getElementById('cancel-quit-btn').addEventListener('click', () => this.cancelQuit());
         document.getElementById('next-level-btn').addEventListener('click', () => this.nextLevel());
@@ -466,6 +499,7 @@ class CodeBreakout {
 
         this.state.reset();
         this.state.gameMode = mode;
+        this.state.gameStartTime = Date.now();
 
         // Easy mode uses campaign level sequence but with easy mode settings
         if (mode === 'easy') {
@@ -514,6 +548,7 @@ class CodeBreakout {
         }
 
         this.state.reset();
+        this.state.gameStartTime = Date.now();
         this.bonusOnlyMode = true;
 
         // Find the level index for this bonus type
@@ -576,10 +611,15 @@ class CodeBreakout {
         this.state.bricksDestroyed = 0;
         this.powerups = [];
         this.lasers = [];
-        this.particles = [];
+        this.legacyParticles = [];
         this.floatingTexts = [];
-        this.ballTrail = [];
         this.shield = null;
+        this.particles.clear();
+
+        // Start/update music
+        this.audio.setMood(levelData.name);
+        this.audio.setIntensity(0.3);
+        this.audio.startMusic();
         this.state.activePowerups = {};
         this.state.destroyedBricks = [];
 
@@ -805,6 +845,9 @@ class CodeBreakout {
     }
 
     levelComplete() {
+        this.haptics.trigger('levelUp');
+        this.audio.stopMusic();
+
         const timeMs = Date.now() - this.state.levelStartTime;
         const timeBonus = Math.max(0, 60000 - timeMs) / 100;
         const perfectBonus = this.state.perfectLevel ? 5000 : 0;
@@ -838,6 +881,16 @@ class CodeBreakout {
     async gameOver(victory) {
         cancelAnimationFrame(this.animationId);
         this.animationId = null;
+
+        // Haptic feedback
+        this.haptics.trigger(victory ? 'victory' : 'gameOver');
+        this.audio.stopMusic();
+
+        // Record anonymous game stats
+        const playTimeSeconds = (Date.now() - this.state.gameStartTime) / 1000;
+        const levelReached = LEVELS[this.state.level].name;
+        const statsMode = this.getStatsMode();
+        recordGameSession(statsMode, levelReached, playTimeSeconds, this.state.score);
 
         // Update final score display
         document.getElementById('final-score').textContent = this.state.score.toLocaleString();
@@ -1360,6 +1413,7 @@ class CodeBreakout {
                 this.triggerScreenShake(10, 400);
                 this.spawnParticles(ball.x, ball.y, '#ff0000', 20);
                 this.audio.playSound('brick');
+                this.haptics.trigger('bossHit');
                 this.state.score += 200;
 
                 // Show damage floating text
@@ -1440,6 +1494,7 @@ class CodeBreakout {
     checkExtraLife() {
         if (this.state.checkExtraLife()) {
             this.audio.playSound('powerup');
+            this.haptics.trigger('extraLife');
             this.showOneUp();
             this.updateUI();
         }
@@ -1488,6 +1543,7 @@ class CodeBreakout {
             const wallHit = checkWallCollision(ball);
             if (wallHit) {
                 this.audio.playSound('wall');
+                this.haptics.trigger('wall');
             }
 
             // Paddle collision (main paddle)
@@ -1512,6 +1568,9 @@ class CodeBreakout {
                     document.getElementById('launch-hint').classList.remove('hidden');
                 }
                 this.audio.playSound('paddle');
+                this.haptics.trigger('paddle');
+                this.particles.paddleHit();
+                this.particles.paddleSparks(ball.x, this.paddle.y, LEVELS[this.state.level].color);
             }
 
             // Split paddle collision (second paddle)
@@ -1523,6 +1582,7 @@ class CodeBreakout {
                         applyDoodleJump(ball);
                     }
                     this.audio.playSound('paddle');
+                    this.haptics.trigger('paddle');
                 }
             }
 
@@ -1537,7 +1597,8 @@ class CodeBreakout {
                     ball.dx = savedBrickDx;
                 }
                 this.handleBrickHit(brickHit.brick, brickHit.index);
-                this.audio.playSound('brick');
+                this.audio.playSound('brick', { comboBonus: this.state.multiplier - 1 });
+                this.haptics.trigger('brick');
             }
 
             // Bottom/Top - lose ball (depends on gravity flip)
@@ -1555,7 +1616,9 @@ class CodeBreakout {
                     }
                     this.audio.playSound('shield');
                 } else {
-                    continue; // Ball lost
+                    // Ball lost - clean up its trail
+                    this.particles.removeBallTrail(ball.id);
+                    continue;
                 }
             }
 
@@ -1593,9 +1656,19 @@ class CodeBreakout {
 
         this.state.bricksDestroyed++;
 
-        // Particles
+        // Enhanced particles
         const center = getBrickCenter(brick);
-        this.spawnParticles(center.x, center.y, brick.color, 8);
+        this.particles.explodeBrick(
+            brick.x, brick.y,
+            brick.width, brick.height,
+            brick.color,
+            this.state.multiplier / 2
+        );
+        // Legacy particles for compatibility
+        this.spawnParticles(center.x, center.y, brick.color, 4);
+
+        // Update music intensity based on combo
+        this.audio.setIntensity(0.3 + (this.state.multiplier - 1) * 0.2);
 
         // Floating score text
         this.spawnFloatingText(center.x, center.y, `+${Math.floor(points)}`, brick.color);
@@ -1655,6 +1728,7 @@ class CodeBreakout {
         // Screen shake for explosion (only for initial explosion, not chain)
         if (!isChainReaction) {
             this.triggerScreenShake(8, 300);
+            this.haptics.trigger('explosion');
         }
 
         // Extra explosion particles
@@ -1705,7 +1779,14 @@ class CodeBreakout {
         // Handle collected powerups
         for (const powerup of collected) {
             this.applyPowerup(powerup.type);
-            this.audio.playSound('powerup');
+            const isPositive = powerup.positive !== false;
+            this.audio.playSound(isPositive ? 'powerupGood' : 'powerupBad');
+            this.haptics.trigger(isPositive ? 'powerupGood' : 'powerupBad');
+            this.particles.collectPowerup(
+                powerup.x, powerup.y,
+                powerup.color || (isPositive ? '#00ff88' : '#ff4444'),
+                isPositive
+            );
         }
 
         // Handle missed powerups (TypeScript level penalty)
@@ -1926,13 +2007,13 @@ class CodeBreakout {
     }
 
     // ========================================================================
-    // PARTICLES
+    // PARTICLES (Legacy + Enhanced)
     // ========================================================================
     spawnParticles(x, y, color, count) {
         for (let i = 0; i < count; i++) {
             const angle = Math.random() * Math.PI * 2;
             const speed = 2 + Math.random() * 8;
-            this.particles.push({
+            this.legacyParticles.push({
                 x,
                 y,
                 dx: Math.cos(angle) * speed,
@@ -1940,26 +2021,30 @@ class CodeBreakout {
                 life: 1,
                 color,
                 size: Math.random() * 5 + 2,
-                decay: 0.015 + Math.random() * 0.015, // Variable decay for more natural look
-                glow: Math.random() > 0.5, // Some particles glow
+                decay: 0.015 + Math.random() * 0.015,
+                glow: Math.random() > 0.5,
             });
         }
     }
 
     updateParticles() {
-        for (let i = this.particles.length - 1; i >= 0; i--) {
-            const p = this.particles[i];
+        // Update legacy particles
+        for (let i = this.legacyParticles.length - 1; i >= 0; i--) {
+            const p = this.legacyParticles[i];
             p.x += p.dx;
             p.y += p.dy;
             p.life -= p.decay || 0.02;
-            p.dy += 0.15; // Lighter gravity for floatier particles
-            p.dx *= 0.98; // Air resistance
-            p.size *= 0.99; // Shrink over time
+            p.dy += 0.15;
+            p.dx *= 0.98;
+            p.size *= 0.99;
 
             if (p.life <= 0 || p.size < 0.5) {
-                this.particles.splice(i, 1);
+                this.legacyParticles.splice(i, 1);
             }
         }
+
+        // Update enhanced particle system
+        this.particles.update();
     }
 
     // ========================================================================
@@ -1992,28 +2077,11 @@ class CodeBreakout {
     // BALL TRAIL
     // ========================================================================
     updateBallTrail() {
-        // Add current ball positions to trail
+        // Update enhanced particle-based ball trails
         for (const ball of this.balls) {
             if (!ball.stuck && ball.visible) {
-                this.ballTrail.push({
-                    x: ball.x,
-                    y: ball.y,
-                    life: 1,
-                });
+                this.particles.updateBallTrail(ball.id, ball.x, ball.y);
             }
-        }
-
-        // Update existing trail points
-        for (let i = this.ballTrail.length - 1; i >= 0; i--) {
-            this.ballTrail[i].life -= 0.1;
-            if (this.ballTrail[i].life <= 0) {
-                this.ballTrail.splice(i, 1);
-            }
-        }
-
-        // Limit trail length
-        while (this.ballTrail.length > 20) {
-            this.ballTrail.shift();
         }
     }
 
@@ -2037,11 +2105,18 @@ class CodeBreakout {
             powerups: this.powerups,
             lasers: this.lasers,
             shield: this.shield,
-            particles: this.particles,
+            particles: this.legacyParticles,
             floatingTexts: this.floatingTexts,
-            ballTrail: this.ballTrail,
+            ballTrail: [], // Legacy trail disabled, using particle system
             activePowerups: this.state.activePowerups,
+            paddleFlash: this.particles.getPaddleFlashIntensity(),
+            comboGlow: this.particles.getComboGlow(),
         });
+
+        // Render enhanced particles and effects
+        this.particles.drawBallTrails(this.ctx, this.balls, LEVELS[this.state.level].color);
+        this.particles.drawParticles(this.ctx);
+        this.particles.drawScreenEffects(this.ctx, this.canvas);
 
         // Render bullets (bullet hell / boss battle)
         this.renderBullets();
@@ -2338,6 +2413,32 @@ class CodeBreakout {
         return levelData.bonus?.type || 'campaign';
     }
 
+    /**
+     * Get the current game mode for statistics tracking
+     * @returns {string} Mode name for stats API
+     */
+    getStatsMode() {
+        if (this.bonusOnlyMode) {
+            const levelData = LEVELS[this.state.level];
+            const bonusType = levelData.bonus?.type;
+            // Map bonus types to stats mode names
+            const modeMap = {
+                'roguelike': 'roguelike',
+                'relax': 'zen',
+                'doodle': 'bounce',
+                'bulletHell': 'bullet',
+                'towerDefense': 'tower',
+                'multiballMadness': 'madness',
+                'boss': 'boss',
+                'speedRun': 'speed',
+            };
+            return modeMap[bonusType] || bonusType || 'classic';
+        }
+        if (this.state.easyMode) return 'easy';
+        if (this.state.gameMode === 'campaign') return 'campaign';
+        return 'classic';
+    }
+
     async loadHighScore() {
         // Load campaign scores for the start screen display
         this.highScores = await loadHighScores('campaign');
@@ -2436,6 +2537,161 @@ class CodeBreakout {
         }
 
         this.showScreen('highscores');
+    }
+
+    // ========================================================================
+    // STATISTICS DASHBOARD
+    // ========================================================================
+
+    async showStats() {
+        const loadingEl = document.getElementById('stats-loading');
+        const gridEl = document.getElementById('stats-grid');
+        const chartSection = document.getElementById('stats-chart-section');
+        const modeSection = document.getElementById('stats-mode-section');
+
+        // Show loading state
+        loadingEl.classList.remove('hidden');
+        gridEl.classList.add('hidden');
+        chartSection.classList.add('hidden');
+        modeSection.classList.add('hidden');
+
+        this.showScreen('stats');
+
+        // Fetch stats
+        const stats = await fetchGameStats();
+
+        if (!stats) {
+            loadingEl.textContent = 'Statistics unavailable';
+            return;
+        }
+
+        // Hide loading, show content
+        loadingEl.classList.add('hidden');
+        gridEl.classList.remove('hidden');
+
+        // Update stat cards
+        document.getElementById('stat-total-games').textContent = stats.totalGames.toLocaleString();
+        document.getElementById('stat-today-games').textContent = stats.gamesToday.toLocaleString();
+
+        // Format play time
+        const hours = Math.floor(stats.totalPlayTimeMinutes / 60);
+        const mins = stats.totalPlayTimeMinutes % 60;
+        document.getElementById('stat-total-time').textContent = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+
+        document.getElementById('stat-avg-score').textContent = stats.averageScore.toLocaleString();
+
+        // Format average session
+        const avgMins = Math.floor(stats.averageSessionSeconds / 60);
+        const avgSecs = stats.averageSessionSeconds % 60;
+        document.getElementById('stat-avg-session').textContent = `${avgMins}:${avgSecs.toString().padStart(2, '0')}`;
+
+        // Build daily chart
+        if (stats.dailyGames && stats.dailyGames.length > 0) {
+            chartSection.classList.remove('hidden');
+            this.buildDailyChart(stats.dailyGames);
+        }
+
+        // Build mode bars
+        if (stats.gamesByMode && Object.keys(stats.gamesByMode).length > 0) {
+            modeSection.classList.remove('hidden');
+            this.buildModeBars(stats.gamesByMode);
+        }
+    }
+
+    buildDailyChart(dailyGames) {
+        const chartEl = document.getElementById('daily-chart');
+        chartEl.textContent = '';
+
+        // Fill in missing days for last 7 days
+        const days = [];
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const today = new Date();
+
+        for (let i = 6; i >= 0; i--) {
+            const date = new Date(today);
+            date.setDate(date.getDate() - i);
+            const dateStr = date.toISOString().split('T')[0];
+            const dayData = dailyGames.find(d => d.date && d.date.startsWith(dateStr));
+            days.push({
+                label: dayNames[date.getDay()],
+                count: dayData ? dayData.count : 0,
+            });
+        }
+
+        const maxCount = Math.max(...days.map(d => d.count), 1);
+
+        days.forEach(day => {
+            const bar = document.createElement('div');
+            bar.className = 'chart-bar';
+
+            const value = document.createElement('span');
+            value.className = 'chart-bar-value';
+            value.textContent = day.count;
+
+            const fill = document.createElement('div');
+            fill.className = 'chart-bar-fill';
+            const height = Math.max(4, (day.count / maxCount) * 70);
+            fill.style.height = `${height}px`;
+
+            const label = document.createElement('span');
+            label.className = 'chart-bar-label';
+            label.textContent = day.label;
+
+            bar.appendChild(value);
+            bar.appendChild(fill);
+            bar.appendChild(label);
+            chartEl.appendChild(bar);
+        });
+    }
+
+    buildModeBars(gamesByMode) {
+        const barsEl = document.getElementById('mode-bars');
+        barsEl.textContent = '';
+
+        const modeLabels = {
+            classic: 'Classic',
+            campaign: 'Campaign',
+            easy: 'Easy',
+            roguelike: 'Roguelike',
+            zen: 'Zen',
+            bounce: 'Bounce',
+            bullet: 'Bullet Hell',
+            tower: 'Tower',
+            madness: 'Madness',
+            boss: 'Boss',
+            speed: 'Speed Run',
+        };
+
+        const entries = Object.entries(gamesByMode).sort((a, b) => b[1] - a[1]);
+        const maxCount = Math.max(...entries.map(([, count]) => count), 1);
+
+        entries.forEach(([mode, count]) => {
+            const bar = document.createElement('div');
+            bar.className = `mode-bar ${mode}`;
+
+            const name = document.createElement('span');
+            name.className = 'mode-bar-name';
+            name.textContent = modeLabels[mode] || mode;
+
+            const track = document.createElement('div');
+            track.className = 'mode-bar-track';
+
+            const fill = document.createElement('div');
+            fill.className = 'mode-bar-fill';
+            const width = Math.max(10, (count / maxCount) * 100);
+            fill.style.width = `${width}%`;
+
+            const countSpan = document.createElement('span');
+            countSpan.className = 'mode-bar-count';
+            countSpan.textContent = count;
+
+            fill.appendChild(countSpan);
+            track.appendChild(fill);
+
+            bar.appendChild(name);
+            bar.appendChild(track);
+            barsEl.appendChild(bar);
+        });
     }
 
     // ========================================================================

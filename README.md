@@ -2,6 +2,8 @@
 
 A programming-themed brick breaker game built with vanilla JavaScript. Progress through 15 levels, each themed around a programming language from HTML to Assembly, with increasing difficulty.
 
+Created by [Rocco Milluzzo](https://www.linkedin.com/in/roccomilluzzo/)
+
 ## Quick Start
 
 ```bash
@@ -44,6 +46,7 @@ The game runs as a containerized stack:
 - Combo multiplier system (up to 3x)
 - Persistent high scores with PostgreSQL database
 - Global leaderboard accessible from main menu
+- Anonymous statistics dashboard with play analytics
 - Mobile and desktop support
 - Easter egg quotes and special attacks at high combos
 
@@ -84,6 +87,8 @@ The game runs as a containerized stack:
 | POST | `/api/scores` | Submit new score |
 | GET | `/api/scores/top` | Get highest score |
 | GET | `/api/scores/check/:score` | Check if score qualifies |
+| GET | `/api/stats` | Get aggregate anonymous statistics |
+| POST | `/api/stats` | Record anonymous game session |
 
 ## Development
 

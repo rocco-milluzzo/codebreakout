@@ -5,6 +5,9 @@
 
 import { CONFIG } from '../config.js';
 
+// Ball ID counter for unique identification
+let ballIdCounter = 0;
+
 /**
  * Create a new ball
  * @param {number} x - Initial X position
@@ -15,6 +18,7 @@ import { CONFIG } from '../config.js';
  */
 export function createBall(x, y, speed, stuck = true) {
     return {
+        id: ++ballIdCounter,
         x,
         y,
         dx: 0,

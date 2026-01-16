@@ -252,6 +252,130 @@ app.get('/api/scores/check/:score', async (req, res) => {
 // NOTE: DELETE endpoint removed for security - use database admin tools if needed
 
 // ============================================================================
+// ANONYMOUS GAME STATISTICS API
+// ============================================================================
+
+/**
+ * POST /api/stats
+ * Record a game session (anonymous)
+ * Body: { mode: string, levelReached: string, playTimeSeconds: number, score: number }
+ */
+app.post('/api/stats', async (req, res) => {
+    try {
+        const { mode, levelReached, playTimeSeconds, score } = req.body;
+
+        // Validate mode
+        const validModes = ['classic', 'campaign', 'easy', 'roguelike', 'zen', 'bounce', 'bullet', 'tower', 'madness', 'boss', 'speed'];
+        if (!mode || !validModes.includes(mode)) {
+            return res.status(400).json({ error: 'Invalid mode' });
+        }
+
+        // Validate levelReached
+        if (!levelReached || typeof levelReached !== 'string') {
+            return res.status(400).json({ error: 'Invalid level' });
+        }
+
+        // Validate playTimeSeconds
+        const time = parseInt(playTimeSeconds, 10);
+        if (!Number.isFinite(time) || time < 0 || time > 36000) { // max 10 hours
+            return res.status(400).json({ error: 'Invalid play time' });
+        }
+
+        // Validate score
+        const gameScore = parseInt(score, 10) || 0;
+        if (gameScore < 0 || gameScore > MAX_SCORE_VALUE) {
+            return res.status(400).json({ error: 'Invalid score' });
+        }
+
+        // Insert anonymous game record
+        await pool.query(
+            'INSERT INTO game_stats (mode, level_reached, play_time_seconds, score, date) VALUES ($1, $2, $3, $4, NOW())',
+            [mode, levelReached.slice(0, 50), time, gameScore]
+        );
+
+        res.status(201).json({ success: true });
+    } catch (error) {
+        console.error('Error recording stats:', error.message);
+        res.status(500).json({ error: 'Failed to record stats' });
+    }
+});
+
+/**
+ * GET /api/stats
+ * Retrieve aggregate anonymous statistics
+ */
+app.get('/api/stats', async (req, res) => {
+    try {
+        // Total games all time
+        const totalGamesResult = await pool.query('SELECT COUNT(*) as count FROM game_stats');
+        const totalGames = parseInt(totalGamesResult.rows[0].count, 10);
+
+        // Games today
+        const todayGamesResult = await pool.query(
+            "SELECT COUNT(*) as count FROM game_stats WHERE date >= CURRENT_DATE"
+        );
+        const gamesToday = parseInt(todayGamesResult.rows[0].count, 10);
+
+        // Total play time (minutes)
+        const totalTimeResult = await pool.query('SELECT COALESCE(SUM(play_time_seconds), 0) as total FROM game_stats');
+        const totalPlayTimeMinutes = Math.round(parseInt(totalTimeResult.rows[0].total, 10) / 60);
+
+        // Average score
+        const avgScoreResult = await pool.query('SELECT COALESCE(AVG(score), 0) as avg FROM game_stats');
+        const averageScore = Math.round(parseFloat(avgScoreResult.rows[0].avg));
+
+        // Games per mode
+        const modeStatsResult = await pool.query(
+            'SELECT mode, COUNT(*) as count FROM game_stats GROUP BY mode ORDER BY count DESC'
+        );
+        const gamesByMode = {};
+        modeStatsResult.rows.forEach(row => {
+            gamesByMode[row.mode] = parseInt(row.count, 10);
+        });
+
+        // Level reached distribution (top 10)
+        const levelStatsResult = await pool.query(
+            'SELECT level_reached, COUNT(*) as count FROM game_stats GROUP BY level_reached ORDER BY count DESC LIMIT 10'
+        );
+        const levelDistribution = {};
+        levelStatsResult.rows.forEach(row => {
+            levelDistribution[row.level_reached] = parseInt(row.count, 10);
+        });
+
+        // Daily games for last 7 days
+        const dailyStatsResult = await pool.query(`
+            SELECT DATE(date) as day, COUNT(*) as count
+            FROM game_stats
+            WHERE date >= CURRENT_DATE - INTERVAL '6 days'
+            GROUP BY DATE(date)
+            ORDER BY day ASC
+        `);
+        const dailyGames = dailyStatsResult.rows.map(row => ({
+            date: row.day,
+            count: parseInt(row.count, 10)
+        }));
+
+        // Average play time per session (seconds)
+        const avgTimeResult = await pool.query('SELECT COALESCE(AVG(play_time_seconds), 0) as avg FROM game_stats');
+        const averageSessionSeconds = Math.round(parseFloat(avgTimeResult.rows[0].avg));
+
+        res.json({
+            totalGames,
+            gamesToday,
+            totalPlayTimeMinutes,
+            averageScore,
+            averageSessionSeconds,
+            gamesByMode,
+            levelDistribution,
+            dailyGames
+        });
+    } catch (error) {
+        console.error('Error fetching stats:', error.message);
+        res.status(500).json({ error: 'Failed to fetch stats' });
+    }
+});
+
+// ============================================================================
 // DATABASE INITIALIZATION
 // ============================================================================
 
@@ -277,6 +401,26 @@ async function initDatabase() {
         // Create index for faster queries (includes mode for filtered queries)
         await pool.query(`
             CREATE INDEX IF NOT EXISTS idx_high_scores_mode_score ON high_scores (mode, score DESC)
+        `);
+
+        // Create game_stats table for anonymous statistics
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS game_stats (
+                id SERIAL PRIMARY KEY,
+                mode VARCHAR(20) NOT NULL,
+                level_reached VARCHAR(50) NOT NULL,
+                play_time_seconds INTEGER NOT NULL DEFAULT 0,
+                score INTEGER NOT NULL DEFAULT 0,
+                date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Create indexes for stats queries
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_game_stats_date ON game_stats (date DESC)
+        `);
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_game_stats_mode ON game_stats (mode)
         `);
 
         console.log('Database initialized successfully');

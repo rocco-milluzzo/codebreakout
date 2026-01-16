@@ -21,6 +21,7 @@ export class GameState {
         this.isLaunched = false;
         this.perfectLevel = true;
         this.levelStartTime = 0;
+        this.gameStartTime = 0;
         this.bricksDestroyed = 0;
         this.totalBricks = 0;
         this.soundEnabled = true;
