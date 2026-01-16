@@ -40,13 +40,17 @@ The game runs as a containerized stack:
 ## Features
 
 - 15 themed programming language levels (HTML to Assembly)
+- 8 unique bonus stages with different gameplay mechanics
+- Easy Mode for casual play
 - Progressive difficulty curve
 - 6 positive powerups: Multiball, Wide Paddle, Slow-Mo, Laser, Shield, Magnet
 - 3 negative powerups: Mini Paddle, Fast Ball, Glitch
 - Combo multiplier system (up to 3x)
 - Persistent high scores with PostgreSQL database
 - Global leaderboard accessible from main menu
+- Score sharing (Facebook, Copy Link)
 - Anonymous statistics dashboard with play analytics
+- Haptic feedback support
 - Mobile and desktop support
 - Easter egg quotes and special attacks at high combos
 
@@ -69,6 +73,19 @@ The game runs as a containerized stack:
 | 13 | Rust | Limited boosts, punishing |
 | 14 | Haskell | Portal bricks |
 | 15 | Assembly | Maximum difficulty |
+
+## Bonus Stages
+
+| Stage | Description |
+|-------|-------------|
+| Roguelike | Survive 2:30 with endless brick regeneration |
+| Zen Mode | Relaxed play with permanent shield |
+| Bounce | Doodle Jump-style platforming |
+| Bullet Hell | Dodge enemy projectiles while breaking bricks |
+| Invasion | Stop descending bricks before they reach the bottom |
+| Multiball Madness | Reach 50 balls on screen |
+| Boss Battle | Defeat the boss with precise shots |
+| Speed Run | Clear waves in 60 seconds |
 
 ## Tech Stack
 
@@ -105,6 +122,13 @@ cd backend && npm install && npm run dev
 python3 -m http.server 8080
 ```
 
+### Running Tests
+
+```bash
+npm install
+npm test
+```
+
 ### Project Structure
 
 ```
@@ -113,9 +137,10 @@ python3 -m http.server 8080
 ├── src/
 │   ├── main.js         # Game class and loop
 │   ├── config.js       # Game constants
-│   ├── levels.js       # 15 level definitions
+│   ├── levels.js       # Level definitions
 │   ├── entities/       # Paddle, ball, brick, powerup
 │   └── systems/        # Input, collision, render, audio, storage
+├── tests/              # Vitest unit tests
 ├── backend/
 │   ├── server.js       # Express API server
 │   ├── package.json    # Node dependencies

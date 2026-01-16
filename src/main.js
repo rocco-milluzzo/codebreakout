@@ -759,7 +759,8 @@ class CodeBreakout {
     }
 
     togglePause() {
-        if (this.state.screen !== 'game') return;
+        // Allow toggle from both 'game' and 'pause' screens
+        if (this.state.screen !== 'game' && this.state.screen !== 'pause') return;
 
         this.state.isPaused = !this.state.isPaused;
 
