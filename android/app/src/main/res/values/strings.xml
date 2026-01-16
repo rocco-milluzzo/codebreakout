@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">CodeBreakout</string>
+    <string name="title_activity_main">CodeBreakout</string>
+    <string name="package_name">com.roccomilluzzo.codebreakout</string>
+    <string name="custom_url_scheme">com.roccomilluzzo.codebreakout</string>
+</resources>
