@@ -88,16 +88,26 @@ export function createBallOnPaddle(paddle, ballSpeed) {
 /**
  * Launch ball from paddle
  * @param {object} ball - Ball object
+ * @param {object} paddle - Paddle object (optional, for position-based angle)
  */
-export function launchBall(ball) {
+export function launchBall(ball, paddle = null) {
     if (!ball.stuck) return;
 
     ball.stuck = false;
 
-    // Random angle between 45 and 135 degrees (upward)
-    const angle = (Math.random() * Math.PI / 2) + Math.PI / 4;
-    ball.dx = Math.cos(angle) * ball.speed * (Math.random() > 0.5 ? 1 : -1);
-    ball.dy = -Math.abs(Math.sin(angle) * ball.speed);
+    let angle;
+    if (paddle) {
+        // Calculate angle based on ball position relative to paddle (same as bounce)
+        const hitPos = (ball.x - paddle.x) / paddle.width;
+        angle = (hitPos - 0.5) * (Math.PI / 2); // -45 to +45 degrees from vertical
+        ball.dx = Math.sin(angle) * ball.speed;
+        ball.dy = -Math.abs(Math.cos(angle) * ball.speed);
+    } else {
+        // Fallback: random angle (for backward compatibility)
+        angle = (Math.random() * Math.PI / 2) + Math.PI / 4;
+        ball.dx = Math.cos(angle) * ball.speed * (Math.random() > 0.5 ? 1 : -1);
+        ball.dy = -Math.abs(Math.sin(angle) * ball.speed);
+    }
 }
 
 /**

@@ -745,7 +745,7 @@ class CodeBreakout {
                 ball.dx = (Math.random() - 0.5) * 3;  // Small random horizontal
                 ball.dy = ball.jumpForce;  // Initial jump up
             } else {
-                launchBall(ball);
+                launchBall(ball, this.paddle);
 
                 // Handle magnet release for each ball
                 if (this.paddle.hasMagnet && this.paddle.magnetCatches > 0) {

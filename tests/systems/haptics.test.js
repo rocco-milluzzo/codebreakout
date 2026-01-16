@@ -41,8 +41,10 @@ describe('Haptic System', () => {
         });
 
         it('should return false when vibrate is not available', () => {
+            // webSupported is captured at construction, so create new manager without vibrate
             delete navigator.vibrate;
-            expect(hapticManager.checkSupport()).toBe(false);
+            const manager = new HapticManager();
+            expect(manager.checkSupport()).toBe(false);
         });
     });
 
@@ -76,6 +78,7 @@ describe('Haptic System', () => {
 
         it('should not vibrate when not supported', () => {
             hapticManager.supported = false;
+            hapticManager.webSupported = false;  // Also disable web fallback
             hapticManager.trigger('brick');
             expect(mockVibrate).not.toHaveBeenCalled();
         });

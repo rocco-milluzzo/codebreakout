@@ -1,73 +1,134 @@
 // CODEBREAKOUT - Haptic Feedback System
 // ============================================================================
 // Mobile vibration patterns for tactile feedback
+// Supports: Capacitor native haptics (iOS/Android) + Web Vibration API fallback
 // ============================================================================
 
 /**
- * Haptic patterns (in milliseconds)
+ * Haptic patterns mapped to Capacitor ImpactStyle
+ * Light = short/subtle, Medium = standard, Heavy = strong
  */
-const PATTERNS = {
+const HAPTIC_STYLES = {
     // Light taps
+    brick: 'light',
+    brickStrong: 'medium',
+    wall: 'light',
+
+    // Medium feedback
+    paddle: 'medium',
+    powerupGood: 'medium',
+    powerupBad: 'heavy',
+
+    // Strong feedback
+    combo: 'heavy',
+    extraLife: 'heavy',
+    levelUp: 'heavy',
+
+    // Impact
+    explosion: 'heavy',
+    gameOver: 'heavy',
+    victory: 'heavy',
+
+    // Boss/special
+    bossHit: 'heavy',
+    specialAttack: 'medium',
+};
+
+/**
+ * Web Vibration API patterns (in milliseconds) - fallback for Android web
+ */
+const WEB_PATTERNS = {
     brick: [15],
     brickStrong: [25],
     wall: [10],
-
-    // Medium feedback
     paddle: [30],
     powerupGood: [20, 30, 50],
     powerupBad: [80],
-
-    // Strong feedback
     combo: [30, 20, 30, 20, 50],
     extraLife: [50, 30, 50, 30, 100],
     levelUp: [50, 50, 50, 50, 100],
-
-    // Impact
     explosion: [100],
     gameOver: [100, 50, 100, 50, 200],
     victory: [50, 30, 50, 30, 50, 30, 100],
-
-    // Boss/special
     bossHit: [80, 30, 80],
     specialAttack: [30, 20, 30, 20, 30, 20, 100],
 };
 
 /**
  * Haptic Feedback Manager
+ * Uses Capacitor Haptics plugin on iOS/Android, falls back to Web Vibration API
  */
 export class HapticManager {
     constructor() {
         this.enabled = true;
-        this.intensity = 1.0; // 0-1, multiplier for pattern durations
-        this.supported = this.checkSupport();
+        this.intensity = 1.0;
+        this.capacitorHaptics = null;
+        this.useCapacitor = false;
+        this.webSupported = 'vibrate' in navigator;
+        this.supported = false;
+
+        this.initCapacitor();
     }
 
     /**
-     * Check if vibration API is supported
+     * Initialize Capacitor Haptics if available
+     */
+    async initCapacitor() {
+        try {
+            // Check if running in Capacitor
+            if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+                const { Haptics } = await import('@capacitor/haptics');
+                this.capacitorHaptics = Haptics;
+                this.useCapacitor = true;
+                this.supported = true;
+            } else {
+                this.supported = this.webSupported;
+            }
+        } catch (e) {
+            // Capacitor not available, use web fallback
+            this.supported = this.webSupported;
+        }
+    }
+
+    /**
+     * Check if vibration API is supported (legacy method for compatibility)
      */
     checkSupport() {
-        return 'vibrate' in navigator;
+        return this.supported || this.webSupported;
     }
 
     /**
      * Trigger haptic feedback
-     * @param {string} type - Pattern type from PATTERNS
+     * @param {string} type - Pattern type
      */
-    trigger(type) {
-        if (!this.enabled || !this.supported) return;
+    async trigger(type) {
+        if (!this.enabled) return;
 
-        const pattern = PATTERNS[type];
-        if (!pattern) return;
+        // Try Capacitor native haptics first
+        if (this.useCapacitor && this.capacitorHaptics) {
+            try {
+                const style = HAPTIC_STYLES[type] || 'medium';
+                const impactStyle = style === 'light' ? 'Light' : style === 'heavy' ? 'Heavy' : 'Medium';
+                await this.capacitorHaptics.impact({ style: impactStyle });
+                return;
+            } catch (e) {
+                // Fall through to web API
+            }
+        }
 
-        try {
-            // Apply intensity to pattern
-            const scaledPattern = pattern.map(duration =>
-                Math.round(duration * this.intensity)
-            );
+        // Web Vibration API fallback (Android browsers)
+        if (this.webSupported) {
+            const pattern = WEB_PATTERNS[type];
+            if (!pattern) return;
 
-            navigator.vibrate(scaledPattern);
-        } catch (e) {
-            // Vibration failed silently
+            try {
+                const scaledPattern = pattern.map(duration =>
+                    Math.round(duration * this.intensity)
+                );
+                navigator.vibrate(scaledPattern);
+            } catch (e) {
+                // Vibration failed silently
+            }
         }
     }
 
