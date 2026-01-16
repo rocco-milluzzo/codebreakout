@@ -316,13 +316,32 @@ app.get('/api/stats', async (req, res) => {
         );
         const gamesToday = parseInt(todayGamesResult.rows[0].count, 10);
 
+        // Games this week
+        const weekGamesResult = await pool.query(
+            "SELECT COUNT(*) as count FROM game_stats WHERE date >= CURRENT_DATE - INTERVAL '6 days'"
+        );
+        const gamesThisWeek = parseInt(weekGamesResult.rows[0].count, 10);
+
         // Total play time (minutes)
         const totalTimeResult = await pool.query('SELECT COALESCE(SUM(play_time_seconds), 0) as total FROM game_stats');
         const totalPlayTimeMinutes = Math.round(parseInt(totalTimeResult.rows[0].total, 10) / 60);
 
         // Average score
         const avgScoreResult = await pool.query('SELECT COALESCE(AVG(score), 0) as avg FROM game_stats');
-        const averageScore = Math.round(parseFloat(avgScoreResult.rows[0].avg));
+        const avgScore = Math.round(parseFloat(avgScoreResult.rows[0].avg));
+
+        // High score (all time best from game_stats)
+        const highScoreResult = await pool.query('SELECT COALESCE(MAX(score), 0) as max FROM game_stats');
+        const highScore = parseInt(highScoreResult.rows[0].max, 10);
+
+        // Unique players estimate (count distinct sessions per day, sum up)
+        // Since we don't track users, estimate by counting games with different scores in short time windows
+        const uniquePlayersResult = await pool.query(`
+            SELECT COUNT(DISTINCT DATE_TRUNC('hour', date) || '-' || score % 1000) as estimate
+            FROM game_stats
+            WHERE date >= CURRENT_DATE - INTERVAL '30 days'
+        `);
+        const uniquePlayers = Math.min(parseInt(uniquePlayersResult.rows[0].estimate, 10), totalGames);
 
         // Games per mode
         const modeStatsResult = await pool.query(
@@ -342,7 +361,7 @@ app.get('/api/stats', async (req, res) => {
             levelDistribution[row.level_reached] = parseInt(row.count, 10);
         });
 
-        // Daily games for last 7 days
+        // Weekly activity - games per day for last 7 days (array of counts, Mon-Sun)
         const dailyStatsResult = await pool.query(`
             SELECT DATE(date) as day, COUNT(*) as count
             FROM game_stats
@@ -350,10 +369,17 @@ app.get('/api/stats', async (req, res) => {
             GROUP BY DATE(date)
             ORDER BY day ASC
         `);
-        const dailyGames = dailyStatsResult.rows.map(row => ({
-            date: row.day,
-            count: parseInt(row.count, 10)
-        }));
+
+        // Build weeklyActivity array (7 days, fill missing days with 0)
+        const weeklyActivity = [];
+        const today = new Date();
+        for (let i = 6; i >= 0; i--) {
+            const date = new Date(today);
+            date.setDate(date.getDate() - i);
+            const dateStr = date.toISOString().split('T')[0];
+            const dayData = dailyStatsResult.rows.find(r => r.day.toISOString().split('T')[0] === dateStr);
+            weeklyActivity.push(dayData ? parseInt(dayData.count, 10) : 0);
+        }
 
         // Average play time per session (seconds)
         const avgTimeResult = await pool.query('SELECT COALESCE(AVG(play_time_seconds), 0) as avg FROM game_stats');
@@ -362,12 +388,15 @@ app.get('/api/stats', async (req, res) => {
         res.json({
             totalGames,
             gamesToday,
+            gamesThisWeek,
             totalPlayTimeMinutes,
-            averageScore,
+            avgScore,
+            highScore,
+            uniquePlayers,
             averageSessionSeconds,
             gamesByMode,
             levelDistribution,
-            dailyGames
+            weeklyActivity
         });
     } catch (error) {
         console.error('Error fetching stats:', error.message);
