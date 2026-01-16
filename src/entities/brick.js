@@ -184,7 +184,7 @@ export function getBrickPattern(patternName) {
         },
 
         // BONUS: Platform pattern for doodle jump mode
-        // Creates sparse platforms for a more challenging jump experience
+        // Creates platforms spread throughout the screen for jumping
         platforms: () => {
             const rows = 16;
             const cols = 10;
@@ -192,10 +192,10 @@ export function getBrickPattern(patternName) {
             const brickTypes = [1, 1, 2]; // Simple brick types
             for (let r = 0; r < rows; r++) {
                 const row = new Array(cols).fill(0);
-                // Only ~10% of rows get platforms (90% reduction)
+                // 75% of rows get platforms
                 // Bottom 2 rows always get a platform for starting
                 const isStartArea = r >= rows - 2;
-                const shouldHavePlatform = isStartArea || Math.random() < 0.15;
+                const shouldHavePlatform = isStartArea || Math.random() < 0.75;
                 if (shouldHavePlatform) {
                     // Single short platform per row
                     const start = Math.floor(Math.random() * (cols - 2));
