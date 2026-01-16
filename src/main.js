@@ -83,16 +83,6 @@ class CodeBreakout {
         // Screen shake for explosions
         this.screenShake = { intensity: 0, duration: 0 };
 
-        // Last brick slow-mo effect
-        this.lastBrickSlowMo = {
-            active: false,
-            startTime: 0,
-            duration: 300,
-            originalSpeeds: [],
-            zoomFactor: 1.0,
-            targetZoom: 1.1,
-        };
-
         // Victory explosion state
         this.victoryExplosionTriggered = false;
 
@@ -903,9 +893,7 @@ class CodeBreakout {
         this.lastBulletTime = Date.now();
         this.lastTowerSpawnTime = Date.now();
         this.multiballGoalReached = false;
-
-        // Reset last brick slow-mo state
-        this.resetLastBrickState();
+        this.victoryExplosionTriggered = false;
 
         // Check if bonus level
         const isBonus = levelData.bonus !== undefined;
@@ -1323,8 +1311,6 @@ class CodeBreakout {
         this.updateBallTrail();
         this.updatePowerupTimers();
         this.updateScreenShake();
-        this.updateLastBrickSlowMo();
-        this.checkLastBrickSlowMo();
         this.updateBonusLevel();
         this.updateBullets();
         this.updateBoss();
@@ -2123,108 +2109,14 @@ class CodeBreakout {
     }
 
     // ========================================================================
-    // LAST BRICK SLOW-MO & VICTORY EXPLOSION
+    // VICTORY EXPLOSION
     // ========================================================================
-
-    /**
-     * Check if we're on the last brick and trigger slow-mo effect
-     */
-    checkLastBrickSlowMo() {
-        const levelData = LEVELS[this.state.level];
-        // Don't apply to bonus levels
-        if (levelData.bonus) return;
-
-        const breakableBricks = this.bricks.filter(b => b.type !== 'UNBREAKABLE' && !b.destroyed);
-
-        // Trigger slow-mo when exactly 1 brick remains and not already active
-        if (breakableBricks.length === 1 && !this.lastBrickSlowMo.active && !this.victoryExplosionTriggered) {
-            this.triggerLastBrickSlowMo(breakableBricks[0]);
-        }
-    }
-
-    /**
-     * Trigger slow-mo effect for the last brick
-     */
-    triggerLastBrickSlowMo(lastBrick) {
-        this.lastBrickSlowMo.active = true;
-        this.lastBrickSlowMo.startTime = Date.now();
-        this.lastBrickSlowMo.lastBrick = lastBrick;
-
-        // Store original ball speeds
-        this.lastBrickSlowMo.originalSpeeds = this.balls.map(ball => ({
-            ball,
-            speed: ball.speed,
-            dx: ball.dx,
-            dy: ball.dy,
-        }));
-
-        // Slow down all balls to 40% speed
-        for (const ball of this.balls) {
-            ball.dx *= 0.4;
-            ball.dy *= 0.4;
-            ball.speed *= 0.4;
-        }
-
-        // Add dramatic audio effect
-        this.audio.playSound('combo');
-        this.haptics.trigger('combo');
-
-        // Add subtle screen effect
-        this.particles.getScreenEffect('flash', {
-            duration: 200,
-            intensity: 0.3,
-            color: '#ffffff',
-        });
-    }
-
-    /**
-     * Update slow-mo effect (restore speed after duration)
-     */
-    updateLastBrickSlowMo() {
-        if (!this.lastBrickSlowMo.active) return;
-
-        const elapsed = Date.now() - this.lastBrickSlowMo.startTime;
-
-        // Calculate zoom factor with easing
-        const progress = Math.min(1, elapsed / this.lastBrickSlowMo.duration);
-        const easeInOut = progress < 0.5
-            ? 2 * progress * progress
-            : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-
-        this.lastBrickSlowMo.zoomFactor = 1 + (this.lastBrickSlowMo.targetZoom - 1) * easeInOut;
-
-        // Restore speed after duration
-        if (elapsed >= this.lastBrickSlowMo.duration) {
-            this.endLastBrickSlowMo();
-        }
-    }
-
-    /**
-     * End slow-mo effect and restore normal speed
-     */
-    endLastBrickSlowMo() {
-        if (!this.lastBrickSlowMo.active) return;
-
-        // Restore original ball speeds
-        for (const saved of this.lastBrickSlowMo.originalSpeeds) {
-            saved.ball.dx = saved.dx;
-            saved.ball.dy = saved.dy;
-            saved.ball.speed = saved.speed;
-        }
-
-        this.lastBrickSlowMo.active = false;
-        this.lastBrickSlowMo.zoomFactor = 1.0;
-        this.lastBrickSlowMo.originalSpeeds = [];
-    }
 
     /**
      * Trigger epic victory explosion when last brick is destroyed
      */
     triggerVictoryExplosion(brick) {
         this.victoryExplosionTriggered = true;
-
-        // End slow-mo if still active
-        this.endLastBrickSlowMo();
 
         const center = getBrickCenter(brick);
 
@@ -2253,16 +2145,6 @@ class CodeBreakout {
 
         // Spawn floating text
         this.spawnFloatingText(center.x, center.y - 20, 'LEVEL CLEAR!', '#ffff00');
-    }
-
-    /**
-     * Reset last brick state for new level
-     */
-    resetLastBrickState() {
-        this.lastBrickSlowMo.active = false;
-        this.lastBrickSlowMo.zoomFactor = 1.0;
-        this.lastBrickSlowMo.originalSpeeds = [];
-        this.victoryExplosionTriggered = false;
     }
 
     // ========================================================================
