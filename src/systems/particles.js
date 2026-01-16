@@ -251,6 +251,71 @@ export class ParticleManager {
     }
 
     /**
+     * Create epic last brick explosion with rainbow particles
+     */
+    explodeLastBrick(x, y, width, height) {
+        const cx = x + width / 2;
+        const cy = y + height / 2;
+
+        // Rainbow colors for victory celebration
+        const rainbowColors = [
+            '#ff0000', // Red
+            '#ff8800', // Orange
+            '#ffff00', // Yellow
+            '#00ff00', // Green
+            '#00ffff', // Cyan
+            '#0088ff', // Blue
+            '#8800ff', // Purple
+            '#ff00ff', // Magenta
+            '#ffffff', // White sparkle
+        ];
+
+        // 30 particles for epic effect
+        const particleCount = 30;
+
+        for (let i = 0; i < particleCount; i++) {
+            const angle = (i / particleCount) * Math.PI * 2;
+            const speed = 4 + Math.random() * 6; // Faster particles
+            const color = rainbowColors[i % rainbowColors.length];
+
+            this.getParticle(
+                cx + (Math.random() - 0.5) * width,
+                cy + (Math.random() - 0.5) * height,
+                {
+                    vx: Math.cos(angle) * speed + (Math.random() - 0.5) * 2,
+                    vy: Math.sin(angle) * speed - 3,
+                    color: color,
+                    size: 4 + Math.random() * 6, // Larger particles
+                    type: Math.random() > 0.3 ? 'spark' : 'square',
+                    decay: 0.01 + Math.random() * 0.015, // Slower decay (lasts longer)
+                    gravity: 0.05, // Lower gravity (float more)
+                    friction: 0.97,
+                }
+            );
+        }
+
+        // Add extra sparkle particles
+        for (let i = 0; i < 15; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 2 + Math.random() * 4;
+
+            this.getParticle(
+                cx,
+                cy,
+                {
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - 2,
+                    color: '#ffffff',
+                    size: 2 + Math.random() * 3,
+                    type: 'circle',
+                    decay: 0.03 + Math.random() * 0.02,
+                    gravity: 0.02,
+                }
+            );
+        }
+    }
+
+    /**
      * Create powerup collection effect
      */
     collectPowerup(x, y, color, isPositive = true) {

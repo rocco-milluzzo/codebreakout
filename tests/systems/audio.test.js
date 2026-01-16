@@ -319,6 +319,31 @@ describe('Audio System', () => {
             audioManager.playSound('unknown_sound_type');
             // Should fall back to brick sound, no errors
         });
+
+        it('should play comboMilestone sound', () => {
+            // Should not throw when playing comboMilestone
+            expect(() => audioManager.playSound('comboMilestone')).not.toThrow();
+        });
+
+        it('should accept comboBonus option for pitch scaling', () => {
+            // Should not throw when passing comboBonus
+            expect(() => audioManager.playSound('brick', { comboBonus: 2 })).not.toThrow();
+        });
+
+        it('should handle high comboBonus values for pitch scaling', () => {
+            // Should not throw even with high combo values
+            expect(() => audioManager.playSound('brick', { comboBonus: 4 })).not.toThrow();
+        });
+
+        it('should handle zero comboBonus', () => {
+            // Should work normally with zero combo bonus
+            expect(() => audioManager.playSound('brick', { comboBonus: 0 })).not.toThrow();
+        });
+
+        it('should handle negative comboBonus gracefully', () => {
+            // Should not throw with negative values
+            expect(() => audioManager.playSound('brick', { comboBonus: -1 })).not.toThrow();
+        });
     });
 
     describe('createAudioManager', () => {

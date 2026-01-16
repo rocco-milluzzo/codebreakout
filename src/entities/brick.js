@@ -184,23 +184,23 @@ export function getBrickPattern(patternName) {
         },
 
         // BONUS: Platform pattern for doodle jump mode
-        // Creates platforms spread throughout the screen for jumping
+        // Creates sparse platforms for a more challenging jump experience
         platforms: () => {
-            const rows = 16;  // Extended rows to reach closer to paddle
+            const rows = 16;
             const cols = 10;
             const pattern = [];
-            const brickTypes = [1, 1, 1, 2, 2, 3]; // Random breakable brick types (weighted)
+            const brickTypes = [1, 1, 2]; // Simple brick types
             for (let r = 0; r < rows; r++) {
                 const row = new Array(cols).fill(0);
-                // Bottom rows (closer to paddle) have more platforms for easier start
-                // Top rows have fewer platforms
-                const isBottomHalf = r >= rows / 2;
-                const numPlatforms = isBottomHalf ? 3 : (Math.random() < 0.3 ? 3 : (Math.random() < 0.6 ? 2 : 1));
-                for (let p = 0; p < numPlatforms; p++) {
+                // Only ~10% of rows get platforms (90% reduction)
+                // Bottom 2 rows always get a platform for starting
+                const isStartArea = r >= rows - 2;
+                const shouldHavePlatform = isStartArea || Math.random() < 0.15;
+                if (shouldHavePlatform) {
+                    // Single short platform per row
                     const start = Math.floor(Math.random() * (cols - 2));
-                    const length = 2 + Math.floor(Math.random() * 2);  // 2-3 bricks wide
+                    const length = 2;  // Fixed 2 bricks wide
                     for (let i = start; i < Math.min(start + length, cols); i++) {
-                        // Random brick type for variety
                         row[i] = brickTypes[Math.floor(Math.random() * brickTypes.length)];
                     }
                 }

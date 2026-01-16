@@ -103,6 +103,13 @@ const SOUNDS = {
         ],
         pitchVar: 0,
     },
+    comboMilestone: {
+        layers: [
+            { freq: 880, duration: 0.08, type: 'sine', gain: 0.12 },
+            { freq: 1320, duration: 0.1, type: 'sine', gain: 0.08, delay: 0.04 },
+        ],
+        pitchVar: 0,
+    },
     levelUp: {
         layers: [
             { freq: 392, duration: 0.12, type: 'sine', gain: 0.1 },
@@ -250,9 +257,13 @@ export class AudioManager {
                 if (sound.pitchVar) {
                     freq += (Math.random() - 0.5) * sound.pitchVar;
                 }
-                // Pitch based on combo
-                if (options.comboBonus) {
-                    freq *= 1 + (options.comboBonus * 0.1);
+                // Pitch based on combo - increases more dramatically with higher combos
+                // comboBonus is (multiplier - 1), so at 2x multiplier it's 1, at 5x it's 4
+                if (options.comboBonus && options.comboBonus > 0) {
+                    // Pitch increases by semitones: +1 semitone at 2x, +2 at 3x, etc.
+                    // Each semitone is 2^(1/12) ≈ 1.0595
+                    const semitones = Math.min(options.comboBonus * 2, 12); // Cap at 12 semitones (1 octave)
+                    freq *= Math.pow(2, semitones / 12);
                 }
 
                 oscillator.type = layer.type;

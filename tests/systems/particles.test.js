@@ -118,6 +118,48 @@ describe('Particle System', () => {
         });
     });
 
+    describe('explodeLastBrick', () => {
+        it('should create rainbow particles for last brick explosion', () => {
+            particleManager.clear();
+            particleManager.explodeLastBrick(100, 200, 60, 20);
+            particleManager.update();
+            // Should create 30 main particles + 15 sparkle particles
+            expect(particleManager.activeParticleCount).toBeGreaterThan(20);
+        });
+
+        it('should create more particles than normal brick explosion', () => {
+            particleManager.clear();
+            particleManager.explodeBrick(100, 200, 60, 20, '#ff0000', 1);
+            particleManager.update();
+            const normalCount = particleManager.activeParticleCount;
+
+            particleManager.clear();
+            particleManager.explodeLastBrick(100, 200, 60, 20);
+            particleManager.update();
+            const lastBrickCount = particleManager.activeParticleCount;
+
+            expect(lastBrickCount).toBeGreaterThan(normalCount);
+        });
+
+        it('should create particles at brick center position', () => {
+            particleManager.clear();
+            // Should not throw and should create particles
+            expect(() => particleManager.explodeLastBrick(100, 200, 60, 20)).not.toThrow();
+            particleManager.update();
+            expect(particleManager.activeParticleCount).toBeGreaterThan(0);
+        });
+
+        it('should create sparkle particles with white color', () => {
+            particleManager.clear();
+            particleManager.explodeLastBrick(100, 200, 60, 20);
+            // Check that at least some particles have white color
+            const hasWhiteParticle = particleManager.particlePool.some(
+                p => p.active && p.color === '#ffffff'
+            );
+            expect(hasWhiteParticle).toBe(true);
+        });
+    });
+
     describe('collectPowerup', () => {
         it('should create particles for powerup collection', () => {
             particleManager.clear();

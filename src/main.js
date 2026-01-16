@@ -68,6 +68,19 @@ class CodeBreakout {
         // Screen shake for explosions
         this.screenShake = { intensity: 0, duration: 0 };
 
+        // Last brick slow-mo effect
+        this.lastBrickSlowMo = {
+            active: false,
+            startTime: 0,
+            duration: 300,
+            originalSpeeds: [],
+            zoomFactor: 1.0,
+            targetZoom: 1.1,
+        };
+
+        // Victory explosion state
+        this.victoryExplosionTriggered = false;
+
         // Streak quotes
         this.lastQuoteTime = 0;
         this.lastQuoteTier = null;
@@ -163,6 +176,10 @@ class CodeBreakout {
         // Enhanced combo effects
         this.particles.comboMilestone(this.canvas.width, this.canvas.height, tier.toLowerCase());
         this.haptics.trigger('combo');
+
+        // Combo milestone "ding" sound - pitch increases with tier
+        const tierPitchBonus = { LOW: 0, MEDIUM: 2, HIGH: 4, EPIC: 6 };
+        this.audio.playSound('comboMilestone', { comboBonus: tierPitchBonus[tier] || 0 });
 
         // Screen flash for HIGH and EPIC tiers
         if (tier === 'HIGH' || tier === 'EPIC') {
@@ -632,6 +649,9 @@ class CodeBreakout {
         this.lastTowerSpawnTime = Date.now();
         this.multiballGoalReached = false;
 
+        // Reset last brick slow-mo state
+        this.resetLastBrickState();
+
         // Check if bonus level
         const isBonus = levelData.bonus !== undefined;
         this.state.bonusActive = isBonus;
@@ -996,6 +1016,8 @@ class CodeBreakout {
         this.updateBallTrail();
         this.updatePowerupTimers();
         this.updateScreenShake();
+        this.updateLastBrickSlowMo();
+        this.checkLastBrickSlowMo();
         this.updateBonusLevel();
         this.updateBullets();
         this.updateBoss();
@@ -1637,6 +1659,15 @@ class CodeBreakout {
     handleBrickHit(brick, index) {
         const destroyed = hitBrick(brick);
 
+        // Screen shake based on brick type (enhanced juice)
+        if (brick.type === 'STANDARD') {
+            this.triggerScreenShake(2, 100);
+        } else if (brick.type === 'STRONG') {
+            this.triggerScreenShake(4, 150);
+        } else if (brick.type === 'TOUGH') {
+            this.triggerScreenShake(5, 150);
+        }
+
         if (destroyed) {
             this.destroyBrick(brick, index);
         } else {
@@ -1718,8 +1749,17 @@ class CodeBreakout {
                 time: Date.now(),
             });
         } else {
+            // Check if this was the last brick (before removing it)
+            const breakableBricks = this.bricks.filter(b => b.type !== 'UNBREAKABLE' && !b.destroyed && b !== brick);
+            const isLastBrick = breakableBricks.length === 0;
+
             // Normal level: remove brick
             this.bricks.splice(index, 1);
+
+            // Trigger victory explosion if this was the last brick
+            if (isLastBrick && !levelData.bonus) {
+                this.triggerVictoryExplosion(brick);
+            }
         }
 
         this.updateUI();
@@ -1727,8 +1767,9 @@ class CodeBreakout {
 
     explodeBrick(brick, isChainReaction = false) {
         // Screen shake for explosion (only for initial explosion, not chain)
+        // Enhanced intensity: 12 (was 8)
         if (!isChainReaction) {
-            this.triggerScreenShake(8, 300);
+            this.triggerScreenShake(12, 350);
             this.haptics.trigger('explosion');
         }
 
@@ -1767,6 +1808,149 @@ class CodeBreakout {
                 this.screenShake.intensity = 0;
             }
         }
+    }
+
+    // ========================================================================
+    // LAST BRICK SLOW-MO & VICTORY EXPLOSION
+    // ========================================================================
+
+    /**
+     * Check if we're on the last brick and trigger slow-mo effect
+     */
+    checkLastBrickSlowMo() {
+        const levelData = LEVELS[this.state.level];
+        // Don't apply to bonus levels
+        if (levelData.bonus) return;
+
+        const breakableBricks = this.bricks.filter(b => b.type !== 'UNBREAKABLE' && !b.destroyed);
+
+        // Trigger slow-mo when exactly 1 brick remains and not already active
+        if (breakableBricks.length === 1 && !this.lastBrickSlowMo.active && !this.victoryExplosionTriggered) {
+            this.triggerLastBrickSlowMo(breakableBricks[0]);
+        }
+    }
+
+    /**
+     * Trigger slow-mo effect for the last brick
+     */
+    triggerLastBrickSlowMo(lastBrick) {
+        this.lastBrickSlowMo.active = true;
+        this.lastBrickSlowMo.startTime = Date.now();
+        this.lastBrickSlowMo.lastBrick = lastBrick;
+
+        // Store original ball speeds
+        this.lastBrickSlowMo.originalSpeeds = this.balls.map(ball => ({
+            ball,
+            speed: ball.speed,
+            dx: ball.dx,
+            dy: ball.dy,
+        }));
+
+        // Slow down all balls to 40% speed
+        for (const ball of this.balls) {
+            ball.dx *= 0.4;
+            ball.dy *= 0.4;
+            ball.speed *= 0.4;
+        }
+
+        // Add dramatic audio effect
+        this.audio.playSound('combo');
+        this.haptics.trigger('combo');
+
+        // Add subtle screen effect
+        this.particles.getScreenEffect('flash', {
+            duration: 200,
+            intensity: 0.3,
+            color: '#ffffff',
+        });
+    }
+
+    /**
+     * Update slow-mo effect (restore speed after duration)
+     */
+    updateLastBrickSlowMo() {
+        if (!this.lastBrickSlowMo.active) return;
+
+        const elapsed = Date.now() - this.lastBrickSlowMo.startTime;
+
+        // Calculate zoom factor with easing
+        const progress = Math.min(1, elapsed / this.lastBrickSlowMo.duration);
+        const easeInOut = progress < 0.5
+            ? 2 * progress * progress
+            : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+        this.lastBrickSlowMo.zoomFactor = 1 + (this.lastBrickSlowMo.targetZoom - 1) * easeInOut;
+
+        // Restore speed after duration
+        if (elapsed >= this.lastBrickSlowMo.duration) {
+            this.endLastBrickSlowMo();
+        }
+    }
+
+    /**
+     * End slow-mo effect and restore normal speed
+     */
+    endLastBrickSlowMo() {
+        if (!this.lastBrickSlowMo.active) return;
+
+        // Restore original ball speeds
+        for (const saved of this.lastBrickSlowMo.originalSpeeds) {
+            saved.ball.dx = saved.dx;
+            saved.ball.dy = saved.dy;
+            saved.ball.speed = saved.speed;
+        }
+
+        this.lastBrickSlowMo.active = false;
+        this.lastBrickSlowMo.zoomFactor = 1.0;
+        this.lastBrickSlowMo.originalSpeeds = [];
+    }
+
+    /**
+     * Trigger epic victory explosion when last brick is destroyed
+     */
+    triggerVictoryExplosion(brick) {
+        this.victoryExplosionTriggered = true;
+
+        // End slow-mo if still active
+        this.endLastBrickSlowMo();
+
+        const center = getBrickCenter(brick);
+
+        // Intense screen shake
+        this.triggerScreenShake(15, 500);
+
+        // Rainbow particle burst (30 particles with multiple colors)
+        this.particles.explodeLastBrick(center.x, center.y, brick.width, brick.height);
+
+        // Multiple screen effects
+        this.particles.getScreenEffect('shockwave', {
+            duration: 600,
+            intensity: 1.2,
+            color: brick.color,
+        });
+
+        this.particles.getScreenEffect('flash', {
+            duration: 300,
+            intensity: 0.6,
+            color: '#ffffff',
+        });
+
+        // Special victory sound
+        this.audio.playSound('levelUp');
+        this.haptics.trigger('levelUp');
+
+        // Spawn floating text
+        this.spawnFloatingText(center.x, center.y - 20, 'LEVEL CLEAR!', '#ffff00');
+    }
+
+    /**
+     * Reset last brick state for new level
+     */
+    resetLastBrickState() {
+        this.lastBrickSlowMo.active = false;
+        this.lastBrickSlowMo.zoomFactor = 1.0;
+        this.lastBrickSlowMo.originalSpeeds = [];
+        this.victoryExplosionTriggered = false;
     }
 
     // ========================================================================
@@ -2082,6 +2266,9 @@ class CodeBreakout {
         for (const ball of this.balls) {
             if (!ball.stuck && ball.visible) {
                 this.particles.updateBallTrail(ball.id, ball.x, ball.y);
+            } else if (ball.stuck) {
+                // Clear trail when ball is stuck (e.g., caught by magnet)
+                this.particles.removeBallTrail(ball.id);
             }
         }
     }

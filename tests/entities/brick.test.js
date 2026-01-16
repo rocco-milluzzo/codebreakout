@@ -98,7 +98,7 @@ describe('Brick Entity', () => {
 
         it('should return pattern for "platforms"', () => {
             const pattern = getBrickPattern('platforms');
-            expect(pattern.length).toBe(12);
+            expect(pattern.length).toBe(16);
         });
 
         it('should return pattern for "bulletHell"', () => {

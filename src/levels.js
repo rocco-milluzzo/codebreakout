@@ -230,7 +230,7 @@ export const LEVELS = [
             duration: 60000,         // 1 minute
             gravity: 0.45,           // Higher gravity for faster descent
             jumpForce: -9.5,         // Reduced jump for tighter control
-            brickRegenDelay: 1000,   // Regenerate bricks after 1 second
+            brickRegenDelay: 10000,  // Regenerate bricks after 10 seconds
             noDeathPenalty: true,
         },
     },
