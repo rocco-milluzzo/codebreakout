@@ -36,6 +36,12 @@ import { getComboTier, getStreakQuote, checkSpecialAttack, createQuoteElement, c
 // Achievements
 import { ACHIEVEMENTS, getNewlyUnlockedAchievements } from './achievements.js';
 
+// Theme system
+import { initializeTheme, cycleTheme, getCurrentThemeId, getThemedLevel, getShareText, getCurrentTheme } from './systems/theme.js';
+
+// Internationalization
+import { initializeLanguage, cycleLanguage, getCurrentLanguage, getCurrentLanguageInfo, t } from './i18n.js';
+
 /**
  * Main game class
  */
@@ -125,6 +131,11 @@ class CodeBreakout {
         this.input.init(this.canvas, this.scale);
         this.setupEventListeners();
         this.loadHighScore();
+        // Initialize theme system with saved theme
+        initializeTheme(this.progress.selectedTheme || 'code');
+        // Initialize language system with saved language
+        initializeLanguage(this.progress.selectedLanguage || 'en');
+        this.updateUILanguage();
         this.showScreen('start');
     }
 
@@ -339,6 +350,7 @@ class CodeBreakout {
         document.getElementById('back-to-menu-btn').addEventListener('click', () => this.backToMenu());
         document.getElementById('submit-score-btn').addEventListener('click', () => this.submitScore());
         document.getElementById('sound-toggle').addEventListener('click', () => this.toggleSound());
+        document.getElementById('game-sound-toggle').addEventListener('click', () => this.toggleSound());
 
         // Share buttons
         document.getElementById('share-facebook-btn').addEventListener('click', () => this.shareOnFacebook());
@@ -359,6 +371,12 @@ class CodeBreakout {
         // Customize screen
         document.getElementById('customize-btn').addEventListener('click', () => this.showCustomize());
         document.getElementById('customize-back-btn').addEventListener('click', () => this.showScreen('start'));
+
+        // Theme button
+        document.getElementById('theme-btn').addEventListener('click', () => this.handleThemeChange());
+
+        // Language button
+        document.getElementById('lang-btn').addEventListener('click', () => this.handleLanguageChange());
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', (e) => this.switchCosmeticTab(e.target.dataset.tab));
         });
@@ -582,6 +600,164 @@ class CodeBreakout {
         this.showScreen('customize');
         this.renderCosmeticGrid();
         this.updateCosmeticPreview();
+    }
+
+    handleThemeChange() {
+        // Cycle to next theme
+        const newThemeId = cycleTheme();
+
+        // Save to progress
+        this.progress.selectedTheme = newThemeId;
+        saveProgress(this.progress);
+
+        // Play sound feedback
+        this.audio.playSound('levelUp');
+    }
+
+    handleLanguageChange() {
+        // Cycle to next language
+        const newLang = cycleLanguage();
+
+        // Save to progress
+        this.progress.selectedLanguage = newLang;
+        saveProgress(this.progress);
+
+        // Update all UI text
+        this.updateUILanguage();
+
+        // Play sound feedback
+        this.audio.playSound('brick');
+    }
+
+    updateUILanguage() {
+        const langInfo = getCurrentLanguageInfo();
+
+        // Update language button
+        const langBtn = document.getElementById('lang-btn');
+        if (langBtn) {
+            langBtn.textContent = `${langInfo.flag} ${langInfo.name.substring(0, 2).toUpperCase()}`;
+        }
+
+        // Menu buttons
+        document.getElementById('classic-btn').textContent = t('menu.classic');
+        document.getElementById('campaign-btn').textContent = t('menu.campaign');
+        document.getElementById('easy-mode-btn').textContent = t('menu.easyMode');
+        document.getElementById('bonus-mode-btn').textContent = t('menu.bonusMode');
+        document.getElementById('highscores-btn').textContent = t('menu.highScores');
+        document.getElementById('stats-btn').textContent = t('menu.statistics');
+        document.getElementById('customize-btn').textContent = t('menu.customize');
+        document.getElementById('achievements-btn').textContent = t('menu.achievements');
+
+        // Best score label
+        const bestLabel = document.querySelector('.high-score-preview span:first-child');
+        if (bestLabel) bestLabel.textContent = `${t('menu.best')}:`;
+
+        // Controls hint
+        const controlsHint = document.querySelector('.controls-hint p');
+        if (controlsHint) controlsHint.textContent = t('controls.hint');
+
+        // Credits
+        const creditsSpan = document.querySelector('.credits span');
+        if (creditsSpan) {
+            const link = creditsSpan.querySelector('a');
+            if (link) {
+                creditsSpan.textContent = '';
+                creditsSpan.appendChild(document.createTextNode(t('credits.createdBy') + ' '));
+                creditsSpan.appendChild(link);
+            }
+        }
+
+        // Back buttons
+        document.querySelectorAll('#highscores-back-btn, #stats-back-btn, #bonus-back-btn, #customize-back-btn, #achievements-back-btn').forEach(btn => {
+            btn.textContent = t('menu.back');
+        });
+
+        // Pause screen
+        document.querySelector('#pause-screen h2').textContent = t('hud.paused');
+        document.getElementById('resume-btn').textContent = t('hud.resume');
+
+        // Pause audio labels
+        const musicLabel = document.querySelector('label[for="music-volume"]');
+        const sfxLabel = document.querySelector('label[for="sfx-volume"]');
+        if (musicLabel) musicLabel.textContent = `🎵 ${t('pause.music')}`;
+        if (sfxLabel) sfxLabel.textContent = `🔊 ${t('pause.sound')}`;
+
+        // Quit dialog
+        document.querySelector('#quit-confirm h3').textContent = t('quit.title');
+        document.querySelector('#quit-confirm p').textContent = t('quit.message');
+        document.getElementById('confirm-quit-btn').textContent = t('quit.confirm');
+        document.getElementById('cancel-quit-btn').textContent = t('quit.cancel');
+
+        // High scores screen
+        document.querySelector('#highscores-screen h2').textContent = t('highScores.title');
+        document.querySelector('.col-rank').textContent = t('highScores.rank');
+        document.querySelector('.col-name').textContent = t('highScores.player');
+        document.querySelector('.col-level').textContent = t('highScores.level');
+        document.querySelector('.col-score').textContent = t('highScores.score');
+        document.getElementById('highscores-empty').textContent = t('highScores.empty');
+
+        // Bonus mode screen
+        document.querySelector('#bonus-select-screen h2').textContent = t('bonus.title');
+        document.querySelector('.bonus-subtitle').textContent = t('bonus.chooseChallenge');
+
+        // Bonus buttons
+        const bonusButtons = [
+            { id: 'bonus-roguelike-btn', name: 'roguelike', desc: 'roguelikeDesc' },
+            { id: 'bonus-zen-btn', name: 'zenMode', desc: 'zenModeDesc' },
+            { id: 'bonus-bounce-btn', name: 'bounce', desc: 'bounceDesc' },
+            { id: 'bonus-bullet-btn', name: 'bulletHell', desc: 'bulletHellDesc' },
+            { id: 'bonus-tower-btn', name: 'invasion', desc: 'invasionDesc' },
+            { id: 'bonus-madness-btn', name: 'multiballMadness', desc: 'multiballMadnessDesc' },
+            { id: 'bonus-boss-btn', name: 'bossBattle', desc: 'bossBattleDesc' },
+            { id: 'bonus-speed-btn', name: 'speedRun', desc: 'speedRunDesc' },
+        ];
+        bonusButtons.forEach(({ id, name, desc }) => {
+            const btn = document.getElementById(id);
+            if (btn) {
+                const nameEl = btn.querySelector('.bonus-name');
+                const descEl = btn.querySelector('.bonus-desc');
+                if (nameEl) nameEl.textContent = t(`bonus.${name}`);
+                if (descEl) descEl.textContent = t(`bonus.${desc}`);
+            }
+        });
+
+        // Game screen
+        document.getElementById('launch-hint').textContent = t('hud.launchHint');
+        const swipeHint = document.querySelector('.swipe-hint');
+        if (swipeHint) swipeHint.textContent = t('hud.swipeHint');
+
+        // Level complete screen
+        document.querySelector('#level-complete-screen h2').textContent = t('game.levelComplete');
+        document.querySelector('#level-stats .stat:nth-child(1) .label').textContent = t('game.time');
+        document.querySelector('#level-stats .stat:nth-child(2) .label').textContent = t('game.bricks');
+        document.querySelector('#level-stats .stat:nth-child(3) .label').textContent = t('game.maxCombo');
+        document.querySelector('#level-stats .stat:nth-child(4) .label').textContent = t('game.levelScore');
+        document.getElementById('next-level-btn').textContent = t('game.continue');
+
+        // Game over screen
+        document.querySelector('.final-score .label').textContent = t('game.finalScore');
+        document.querySelector('.reached-level span:first-child').textContent = `${t('game.reached')}: `;
+        document.getElementById('player-name').placeholder = t('game.enterName');
+        document.getElementById('submit-score-btn').textContent = t('game.saveScore');
+        document.querySelector('#leaderboard-preview h3').textContent = t('game.topScores');
+        document.getElementById('play-again-btn').textContent = t('game.playAgain');
+        document.getElementById('retry-bonus-btn').textContent = t('game.retry');
+
+        // Share buttons
+        document.querySelector('.share-label').textContent = t('share.label');
+
+        // Stats screen
+        document.querySelector('#stats-screen h1').textContent = t('stats.title');
+
+        // Customize screen
+        document.querySelector('#customize-screen h1').textContent = t('customize.title');
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        if (tabBtns[0]) tabBtns[0].textContent = t('customize.paddle');
+        if (tabBtns[1]) tabBtns[1].textContent = t('customize.trail');
+        if (tabBtns[2]) tabBtns[2].textContent = t('customize.background');
+
+        // Achievements screen
+        document.querySelector('#achievements-screen h1').textContent = t('achievementsScreen.title');
     }
 
     switchCosmeticTab(tab) {
@@ -841,6 +1017,7 @@ class CodeBreakout {
 
     showLevelIntro() {
         const levelData = LEVELS[this.state.level];
+        const themedLevel = getThemedLevel(this.state.level);
 
         // Cancel any existing intro timeout
         if (this.levelIntroTimeout) {
@@ -856,9 +1033,9 @@ class CodeBreakout {
             levelNumberEl.style.display = '';
             levelNumberEl.textContent = `LEVEL ${this.state.level + 1}`;
         }
-        document.getElementById('intro-level-name').textContent = levelData.name;
-        document.getElementById('intro-level-name').style.color = levelData.color;
-        document.getElementById('intro-level-desc').textContent = levelData.description;
+        document.getElementById('intro-level-name').textContent = themedLevel.name;
+        document.getElementById('intro-level-name').style.color = themedLevel.color;
+        document.getElementById('intro-level-desc').textContent = themedLevel.description;
 
         this.showScreen('level-intro');
 
@@ -875,6 +1052,7 @@ class CodeBreakout {
 
     initLevel() {
         const levelData = LEVELS[this.state.level];
+        const themedLevel = getThemedLevel(this.state.level);
 
         // Reset level state
         this.state.isLaunched = false;
@@ -998,8 +1176,8 @@ class CodeBreakout {
 
         // Update UI
         this.updateUI();
-        document.getElementById('level-name').textContent = levelData.name;
-        document.getElementById('level-name').style.color = levelData.color;
+        document.getElementById('level-name').textContent = themedLevel.name;
+        document.getElementById('level-name').style.color = themedLevel.color;
         document.getElementById('launch-hint').classList.remove('hidden');
     }
 
@@ -1144,7 +1322,8 @@ class CodeBreakout {
         const nextSequenceIndex = this.state.sequenceIndex + 1;
         if (nextSequenceIndex < this.state.levelSequence.length) {
             const nextLevelIndex = this.state.levelSequence[nextSequenceIndex];
-            document.getElementById('next-level-name').textContent = `Next: ${LEVELS[nextLevelIndex].name}`;
+            const nextThemedLevel = getThemedLevel(nextLevelIndex);
+            document.getElementById('next-level-name').textContent = `Next: ${nextThemedLevel.name}`;
         } else {
             document.getElementById('next-level-name').textContent = 'Final Level Complete!';
         }
@@ -1184,7 +1363,7 @@ class CodeBreakout {
 
         // Record anonymous game stats
         const playTimeSeconds = (Date.now() - this.state.gameStartTime) / 1000;
-        const levelReached = LEVELS[this.state.level].name;
+        const levelReached = getThemedLevel(this.state.level).name;
         const statsMode = this.getStatsMode();
         recordGameSession(statsMode, levelReached, playTimeSeconds, this.state.score);
 
@@ -1205,15 +1384,16 @@ class CodeBreakout {
         saveProgress(this.progress);
 
         // Update final score display
+        const themedLevel = getThemedLevel(this.state.level);
         document.getElementById('final-score').textContent = this.state.score.toLocaleString();
-        document.getElementById('reached-level').textContent = LEVELS[this.state.level].name;
+        document.getElementById('reached-level').textContent = themedLevel.name;
 
         // Update game over title based on victory and mode
         const gameOverTitle = document.querySelector('#game-over-screen h2');
         if (gameOverTitle) {
             if (this.bonusOnlyMode) {
                 gameOverTitle.textContent = 'BONUS COMPLETE!';
-                gameOverTitle.style.color = LEVELS[this.state.level].color;
+                gameOverTitle.style.color = themedLevel.color;
             } else if (victory) {
                 let modeTitle;
                 if (this.state.gameMode === 'classic') {
@@ -1224,7 +1404,7 @@ class CodeBreakout {
                     modeTitle = 'CAMPAIGN COMPLETE!';
                 }
                 gameOverTitle.textContent = modeTitle;
-                gameOverTitle.style.color = '#00ff88';
+                gameOverTitle.style.color = getCurrentTheme().accent;
             } else {
                 gameOverTitle.textContent = 'GAME OVER';
                 gameOverTitle.style.color = '#ff4455';
@@ -1628,13 +1808,24 @@ class CodeBreakout {
                 // Lose a life when hit by bullet (bullet hell or boss battle)
                 const levelData = LEVELS[this.state.level];
                 if (levelData.bonus && (levelData.bonus.type === 'bulletHell' || levelData.bonus.type === 'boss')) {
+                    this.spawnFloatingText(this.paddle.x + this.paddle.width / 2, this.paddle.y, 'HIT!', '#ff0066');
+                    // noDeathPenalty: first hit ends the bonus and advances (no life lost)
+                    if (levelData.bonus.noDeathPenalty) {
+                        this.spawnFloatingText(CONFIG.CANVAS_WIDTH / 2, CONFIG.CANVAS_HEIGHT / 2, 'BONUS OVER!', levelData.color);
+                        if (this.bonusOnlyMode) {
+                            this.gameOver(true); // Victory for bonus mode
+                        } else {
+                            this.nextLevel();
+                        }
+                        return; // Stop processing bullets
+                    }
+                    // No noDeathPenalty: lose lives normally
                     if (this.state.lives > 0) {
                         this.state.lives--;
                         this.updateUI();
-                        this.spawnFloatingText(this.paddle.x + this.paddle.width / 2, this.paddle.y, 'HIT!', '#ff0066');
                         if (this.state.lives <= 0) {
                             this.gameOver(false);
-                            return; // Stop processing bullets after game over
+                            return;
                         }
                     }
                 }
@@ -2016,9 +2207,17 @@ class CodeBreakout {
         // Powerup drop with level-based rarity (apply easy mode multiplier)
         const levelData = LEVELS[this.state.level];
         const powerupChance = levelData.powerupChance * this.state.getPowerupDropMultiplier();
+        let spawnedPowerup = false;
         if (Math.random() < powerupChance) {
             const rarityModifier = levelData.powerupRarity || 1.0;
             this.powerups.push(spawnPositivePowerup(center.x, center.y, rarityModifier));
+            spawnedPowerup = true;
+        }
+
+        // Random negative powerup chance (only if no positive powerup spawned)
+        if (!spawnedPowerup && Math.random() < CONFIG.NEGATIVE_POWERUP_CHANCE) {
+            this.powerups.push(spawnNegativePowerup(center.x, center.y));
+            spawnedPowerup = true;
         }
 
         // Handle special brick types
@@ -2026,6 +2225,7 @@ class CodeBreakout {
             this.explodeBrick(brick);
         }
 
+        // HAZARD bricks always spawn negative powerup (in addition to random chance)
         if (brick.type === 'HAZARD') {
             this.powerups.push(spawnNegativePowerup(center.x, center.y));
         }
@@ -2191,6 +2391,12 @@ class CodeBreakout {
 
     applyPowerup(type) {
         const duration = CONFIG.POWERUP_DURATION[type] || 10000;
+
+        // Track malus collection for achievements
+        const powerupDef = POWERUP_TYPES[type];
+        if (powerupDef && powerupDef.positive === false) {
+            this.state.malusCollected++;
+        }
 
         // Get current stack count BEFORE activating (to determine if this is a stack)
         const currentStacks = this.state.getPowerupStacks(type);
@@ -3219,9 +3425,10 @@ class CodeBreakout {
      */
     getShareText() {
         const score = this.state.score.toLocaleString();
-        const level = LEVELS[this.state.level].name;
+        const themedLevel = getThemedLevel(this.state.level);
+        const theme = getCurrentTheme();
         const mode = this.state.easyMode ? 'Easy Mode' : (this.state.gameMode === 'classic' ? 'Classic' : 'Campaign');
-        return `I scored ${score} points and reached ${level} in CODEBREAKOUT ${mode}! Can you beat my score?`;
+        return `I scored ${score} points and reached ${themedLevel.name} in ${theme.meta.title} ${mode}! Can you beat my score?`;
     }
 
     /**
@@ -3295,7 +3502,9 @@ class CodeBreakout {
     // ========================================================================
     toggleSound() {
         const enabled = this.audio.toggle();
-        document.getElementById('sound-icon').textContent = enabled ? '\uD83D\uDD0A' : '\uD83D\uDD07';
+        const icon = enabled ? '🔊' : '🔇';
+        document.getElementById('sound-icon').textContent = icon;
+        document.getElementById('game-sound-toggle').textContent = icon;
         this.state.soundEnabled = enabled;
     }
 }

@@ -308,6 +308,8 @@ export function loadProgress() {
         selectedPaddle: 'default',
         selectedTrail: 'default',
         selectedBackground: 'default',
+        selectedTheme: 'code',
+        selectedLanguage: 'en',
     };
     try {
         const saved = localStorage.getItem(PROGRESS_KEY);

@@ -40,6 +40,7 @@ export const CONFIG = {
 
     // Powerups - Base drop chance (modified by level)
     POWERUP_DROP_CHANCE: 0.12,  // Reduced from 0.15
+    NEGATIVE_POWERUP_CHANCE: 0.03,  // 3% chance for negative powerup from any brick
     POWERUP_SPEED: 2,
     POWERUP_SIZE: 25,
 

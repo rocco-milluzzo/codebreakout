@@ -537,6 +537,9 @@ export class ParticleManager {
         ctx.save();
 
         for (const ball of balls) {
+            // Skip trail for invisible balls (GLITCH powerup)
+            if (!ball.visible) continue;
+
             const trail = this.ballTrails.get(ball.id);
             if (!trail || trail.count < 2) continue;
 

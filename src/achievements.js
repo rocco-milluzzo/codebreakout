@@ -13,6 +13,11 @@ export const ACHIEVEMENTS = [
     { id: 'zen_master', name: 'Zen Master', desc: 'Complete Zen Mode', icon: '🧘', requirement: { type: 'bonusType', value: 'relax' } },
     { id: 'score_10k', name: 'Rising Star', desc: 'Reach 10,000 total score', icon: '⭐', requirement: { type: 'totalScore', value: 10000 } },
     { id: 'score_100k', name: 'Legend', desc: 'Reach 100,000 total score', icon: '🌟', requirement: { type: 'totalScore', value: 100000 } },
+    // Malus-related achievements
+    { id: 'tough_cookie', name: 'Tough Cookie', desc: 'Survive 5 malus powerups', icon: '💪', requirement: { type: 'malusCount', value: 5 } },
+    { id: 'iron_will', name: 'Iron Will', desc: 'Survive 15 malus powerups', icon: '🦾', requirement: { type: 'malusCount', value: 15 } },
+    { id: 'bullet_hell_master', name: 'Bullet Dodger', desc: 'Complete Bullet Hell mode', icon: '💨', requirement: { type: 'bonusType', value: 'bulletHell' } },
+    { id: 'speed_runner', name: 'Speed Runner', desc: 'Complete Speed Run mode', icon: '🏃', requirement: { type: 'bonusType', value: 'speedRun' } },
 ];
 
 export function getAchievementById(id) {
@@ -29,6 +34,7 @@ export function checkAchievement(achievement, gameState, progress) {
         case 'bonusType': return gameState.completedBonusType === req.value;
         case 'ballCount': return gameState.maxBallsThisGame >= req.value;
         case 'totalScore': return progress.totalScore >= req.value;
+        case 'malusCount': return gameState.malusCollected >= req.value;
         default: return false;
     }
 }

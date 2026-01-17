@@ -39,6 +39,13 @@ export class GameState {
         this.levelSequence = [];       // Array of level indices to play
         this.sequenceIndex = 0;        // Current position in sequence
         this.easyMode = false;         // Easy mode flag
+
+        // Achievement tracking
+        this.malusCollected = 0;       // Count of malus powerups collected this game
+        this.maxBallsThisGame = 1;     // Max balls at once this game
+        this.maxComboThisGame = 1;     // Max combo this game
+        this.levelTime = 0;            // Time to complete current level
+        this.completedBonusType = null; // Type of bonus completed
     }
 
     /**

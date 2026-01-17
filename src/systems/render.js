@@ -9,6 +9,28 @@ import { POWERUP_TYPES } from '../powerups.js';
 // Animation time for animated effects
 let animationTime = 0;
 
+// Current theme style (set by setThemeStyle)
+let currentThemeStyle = {
+    brickStyle: 'angular',
+    brickBorderRadius: 3,
+    brickBorderWidth: 2,
+    brickGlow: true,
+    brickPattern: 'grid',
+    paddleStyle: 'tech',
+    ballGlow: true,
+    particleStyle: 'pixels',
+};
+
+/**
+ * Set the current theme style for rendering
+ * @param {object} style - Theme style object
+ */
+export function setThemeStyle(style) {
+    if (style) {
+        currentThemeStyle = { ...currentThemeStyle, ...style };
+    }
+}
+
 /**
  * Update animation time - call this each frame
  */
@@ -133,11 +155,199 @@ function lightenColor(color, factor) {
  * @param {string} color2 - Bottom color
  */
 function drawGradientBrick(ctx, x, y, width, height, color1, color2) {
+    const style = currentThemeStyle.brickStyle || 'angular';
+
+    switch (style) {
+        case 'angular':
+            drawAngularBrick(ctx, x, y, width, height, color1, color2);
+            break;
+        case 'rounded':
+            drawRoundedBrick(ctx, x, y, width, height, color1, color2);
+            break;
+        case 'space':
+            drawSpaceBrick(ctx, x, y, width, height, color1, color2);
+            break;
+        default:
+            drawAngularBrick(ctx, x, y, width, height, color1, color2);
+    }
+}
+
+/**
+ * Draw CODE theme brick - angular, tech-style with circuit patterns
+ */
+function drawAngularBrick(ctx, x, y, width, height, color1, color2) {
     const gradient = ctx.createLinearGradient(x, y, x, y + height);
     gradient.addColorStop(0, color1);
     gradient.addColorStop(1, color2);
+
+    // Add glow
+    ctx.shadowColor = color1;
+    ctx.shadowBlur = 6;
+
+    // Main brick with small corner cuts for angular look
+    const cut = 4;
     ctx.fillStyle = gradient;
-    ctx.fillRect(x, y, width, height);
+    ctx.beginPath();
+    ctx.moveTo(x + cut, y);
+    ctx.lineTo(x + width - cut, y);
+    ctx.lineTo(x + width, y + cut);
+    ctx.lineTo(x + width, y + height - cut);
+    ctx.lineTo(x + width - cut, y + height);
+    ctx.lineTo(x + cut, y + height);
+    ctx.lineTo(x, y + height - cut);
+    ctx.lineTo(x, y + cut);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+
+    // Circuit line pattern
+    ctx.strokeStyle = 'rgba(0,255,136,0.3)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    // Horizontal line
+    ctx.moveTo(x + 5, y + height / 2);
+    ctx.lineTo(x + width - 5, y + height / 2);
+    // Small node
+    ctx.moveTo(x + width * 0.7, y + height / 2);
+    ctx.lineTo(x + width * 0.7, y + height * 0.3);
+    ctx.stroke();
+
+    // Corner accent
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.beginPath();
+    ctx.moveTo(x, y + cut);
+    ctx.lineTo(x + cut, y);
+    ctx.lineTo(x + 12, y);
+    ctx.lineTo(x, y + 12);
+    ctx.closePath();
+    ctx.fill();
+}
+
+/**
+ * Draw CAKE theme brick - soft, pastry-like with frosting
+ */
+function drawRoundedBrick(ctx, x, y, width, height, color1, color2) {
+    const radius = 10;
+
+    // Shadow for depth
+    ctx.shadowColor = 'rgba(0,0,0,0.3)';
+    ctx.shadowBlur = 4;
+    ctx.shadowOffsetY = 2;
+
+    // Main pastry body
+    const gradient = ctx.createLinearGradient(x, y, x, y + height);
+    gradient.addColorStop(0, color1);
+    gradient.addColorStop(0.5, color2);
+    gradient.addColorStop(1, color2);
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.roundRect(x, y, width, height, radius);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+
+    // Frosting on top
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.beginPath();
+    ctx.ellipse(x + width / 2, y + 4, width * 0.4, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Frosting drips
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    const drips = [0.25, 0.5, 0.75];
+    for (const d of drips) {
+        const dx = x + width * d;
+        const dh = 4 + Math.sin(dx) * 3;
+        ctx.beginPath();
+        ctx.ellipse(dx, y + dh + 2, 3, dh, 0, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Sprinkle dots
+    ctx.fillStyle = '#ff69b4';
+    for (let i = 0; i < 3; i++) {
+        const sx = x + 8 + i * (width - 16) / 2;
+        const sy = y + height * 0.6 + Math.sin(sx) * 3;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 2, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Subtle inner highlight
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(x + 3, y + 3, width - 6, height - 6, radius - 2);
+    ctx.stroke();
+}
+
+/**
+ * Draw ASTRO theme brick - planetary/space style with glow
+ */
+function drawSpaceBrick(ctx, x, y, width, height, color1, color2) {
+    const radius = 8;
+
+    // Outer glow
+    ctx.shadowColor = color1;
+    ctx.shadowBlur = 10;
+
+    // Main brick with subtle oval shape
+    const gradient = ctx.createRadialGradient(
+        x + width * 0.3, y + height * 0.3, 0,
+        x + width / 2, y + height / 2, width * 0.7
+    );
+    gradient.addColorStop(0, color1);
+    gradient.addColorStop(0.7, color2);
+    gradient.addColorStop(1, 'rgba(0,0,0,0.3)');
+
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.roundRect(x, y, width, height, radius);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+
+    // Planetary ring effect
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(x + width / 2, y + height / 2, width * 0.45, height * 0.2, 0.3, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Star sparkles
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    const pulse = 0.5 + Math.sin(animationTime * 3 + x) * 0.5;
+    drawStar(ctx, x + width * 0.8, y + height * 0.25, 2 * pulse, 1 * pulse);
+    drawStar(ctx, x + width * 0.2, y + height * 0.7, 1.5 * pulse, 0.7 * pulse);
+
+    // Atmosphere highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.beginPath();
+    ctx.ellipse(x + width * 0.35, y + height * 0.35, width * 0.25, height * 0.2, -0.5, 0, Math.PI * 2);
+    ctx.fill();
+}
+
+/**
+ * Draw a small star shape
+ */
+function drawStar(ctx, cx, cy, outerR, innerR) {
+    const spikes = 4;
+    let rot = Math.PI / 2 * 3;
+    const step = Math.PI / spikes;
+
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - outerR);
+    for (let i = 0; i < spikes; i++) {
+        ctx.lineTo(cx + Math.cos(rot) * outerR, cy + Math.sin(rot) * outerR);
+        rot += step;
+        ctx.lineTo(cx + Math.cos(rot) * innerR, cy + Math.sin(rot) * innerR);
+        rot += step;
+    }
+    ctx.lineTo(cx, cy - outerR);
+    ctx.closePath();
+    ctx.fill();
 }
 
 /**
