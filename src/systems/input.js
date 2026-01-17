@@ -22,6 +22,7 @@ export class InputManager {
         this.handleTouchStart = this.handleTouchStart.bind(this);
         this.handleTouchMove = this.handleTouchMove.bind(this);
         this.handleTouchEnd = this.handleTouchEnd.bind(this);
+        this.handleTouchCancel = this.handleTouchCancel.bind(this);
     }
 
     /**
@@ -52,6 +53,7 @@ export class InputManager {
         this.canvas.addEventListener('touchstart', this.handleTouchStart, { passive: false });
         this.canvas.addEventListener('touchmove', this.handleTouchMove, { passive: false });
         this.canvas.addEventListener('touchend', this.handleTouchEnd);
+        this.canvas.addEventListener('touchcancel', this.handleTouchCancel);
     }
 
     /**
@@ -127,6 +129,13 @@ export class InputManager {
     }
 
     /**
+     * Handle touch cancel event (system cancelled the touch)
+     */
+    handleTouchCancel() {
+        this.touchX = null;
+    }
+
+    /**
      * Check if a key is pressed
      * @param {string} code - Key code
      * @returns {boolean}
@@ -176,6 +185,13 @@ export class InputManager {
     }
 
     /**
+     * Reset touch state (useful when changing screens)
+     */
+    resetTouch() {
+        this.touchX = null;
+    }
+
+    /**
      * Cleanup event listeners
      */
     destroy() {
@@ -187,6 +203,7 @@ export class InputManager {
             this.canvas.removeEventListener('touchstart', this.handleTouchStart);
             this.canvas.removeEventListener('touchmove', this.handleTouchMove);
             this.canvas.removeEventListener('touchend', this.handleTouchEnd);
+            this.canvas.removeEventListener('touchcancel', this.handleTouchCancel);
         }
     }
 }

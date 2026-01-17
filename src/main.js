@@ -428,6 +428,13 @@ class CodeBreakout {
             swipeIndicator.style.left = '50%';
         });
 
+        // Handle touch cancel (system cancelled the touch)
+        swipeZone.addEventListener('touchcancel', () => {
+            swipeStartX = null;
+            swipeCurrentX = null;
+            swipeIndicator.style.left = '50%';
+        });
+
         // Shoot button handling
         shootBtn.addEventListener('touchstart', (e) => {
             e.preventDefault();
@@ -485,6 +492,9 @@ class CodeBreakout {
         document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
         document.getElementById(`${screenName}-screen`).classList.remove('hidden');
         this.state.screen = screenName;
+
+        // Reset touch state to prevent stale touch position from interfering with swipe zone
+        this.input.resetTouch();
 
         if (screenName === 'game') {
             document.getElementById('launch-hint').classList.remove('hidden');
