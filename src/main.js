@@ -1441,6 +1441,23 @@ class CodeBreakout {
             backBtn.classList.remove('hidden');
         }
 
+        // Reset share buttons (hidden until score is saved)
+        const shareButtons = document.querySelector('#game-over-screen .share-buttons');
+        if (shareButtons) {
+            shareButtons.classList.add('hidden');
+        }
+
+        // Reset submit button and name input
+        const submitBtn = document.getElementById('submit-score-btn');
+        const nameInput = document.getElementById('player-name');
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = t('game.saveScore');
+        }
+        if (nameInput) {
+            nameInput.value = '';
+        }
+
         // Update leaderboard title to show which mode
         const leaderboardTitle = document.querySelector('#leaderboard-preview h3');
         if (leaderboardTitle) {
@@ -3213,6 +3230,12 @@ class CodeBreakout {
             this.highScores,
             this.state.score
         );
+
+        // Show share buttons after score is saved
+        const shareButtons = document.querySelector('#game-over-screen .share-buttons');
+        if (shareButtons) {
+            shareButtons.classList.remove('hidden');
+        }
     }
 
     async showHighScores() {

@@ -2633,6 +2633,7 @@ body {
 .btn.share-btn.link {
     border-color: var(--accent);
     background: rgba(var(--accent-rgb), 0.1);
+    color: var(--accent);
 }
 
 .btn.share-btn.link:hover {
