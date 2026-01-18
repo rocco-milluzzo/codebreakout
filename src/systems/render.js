@@ -48,6 +48,25 @@ import { POWERUP_TYPES } from '../powerups.js';
 // Animation time for animated effects
 let animationTime = 0;
 
+// Performance mode - when true, use simplified rendering (no gradients, no shadows)
+let performanceMode = false;
+
+/**
+ * Set performance mode for simplified rendering
+ * @param {boolean} enabled - Whether to enable performance mode
+ */
+export function setPerformanceMode(enabled) {
+    performanceMode = enabled;
+}
+
+/**
+ * Check if performance mode is active
+ * @returns {boolean}
+ */
+export function isPerformanceMode() {
+    return performanceMode;
+}
+
 // Current theme style (set by setThemeStyle)
 let currentThemeStyle = {
     brickStyle: 'angular',
@@ -692,6 +711,23 @@ export function drawBricks(ctx, bricks) {
         if (brick.destroyed) continue;
 
         const { x, y, width, height, color, type, hits, maxHits } = brick;
+
+        // Performance mode: simple colored rectangles only
+        if (performanceMode) {
+            let brickColor = color;
+            if (type === 'UNBREAKABLE') brickColor = '#444444';
+            else if (type === 'HAZARD') brickColor = '#ff0044';
+            else if (type === 'EXPLODING') brickColor = '#ff6600';
+            else if (type === 'PORTAL') brickColor = '#9900ff';
+
+            ctx.fillStyle = brickColor;
+            ctx.fillRect(x, y, width, height);
+            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x, y, width, height);
+            continue;
+        }
+
         const hitsRemaining = hits;
 
         switch (type) {
@@ -1020,6 +1056,19 @@ export function drawPaddle(ctx, paddle, levelData, activePowerups, cosmetic = nu
     const { x, y, width, height } = paddle;
     const w = width;
     const h = height;
+
+    // Performance mode: simple colored rectangle
+    if (performanceMode) {
+        ctx.fillStyle = levelData.color;
+        ctx.fillRect(x, y, w, h);
+        // Draw split paddle too
+        if (paddle.isSplit && paddle.splitPaddle) {
+            ctx.fillRect(paddle.splitPaddle.x, paddle.splitPaddle.y,
+                         paddle.splitPaddle.width, paddle.splitPaddle.height);
+        }
+        return;
+    }
+
     const paddleStyle = currentThemeStyle.paddleStyle || 'tech';
 
     // Use theme-specific corner radius
@@ -1336,7 +1385,7 @@ export function drawPaddle(ctx, paddle, levelData, activePowerups, cosmetic = nu
 export function drawBalls(ctx, balls, activePowerups) {
     const ballCount = balls.length;
     // Use ultra-simple rendering when there are many balls (massive performance gain)
-    const useSimpleRendering = ballCount > 8;
+    const useSimpleRendering = ballCount > 8 || performanceMode;
 
     for (const ball of balls) {
         if (!ball.visible && !activePowerups.GLITCH) continue;
@@ -1486,48 +1535,24 @@ export function drawBalls(ctx, balls, activePowerups) {
 
                 ctx.restore();
             } else if (isFastBall) {
-                // Fast ball effect - red/orange speed blur
-                const fastPulse = 0.8 + 0.2 * Math.sin(animationTime * 15);
-                ctx.save();
-                ctx.shadowColor = '#ff4400';
-                ctx.shadowBlur = 12 * fastPulse;
-
-                // Speed lines behind ball
-                const speedDir = Math.atan2(ball.dy, ball.dx);
-                for (let i = 0; i < 4; i++) {
-                    const lineLength = 10 + i * 5;
-                    const lineX = ball.x - Math.cos(speedDir) * (ball.radius + 5 + i * 6);
-                    const lineY = ball.y - Math.sin(speedDir) * (ball.radius + 5 + i * 6);
-                    const alpha = (1 - i * 0.2) * fastPulse;
-                    ctx.strokeStyle = `rgba(255,100,0,${alpha})`;
-                    ctx.lineWidth = 3 - i * 0.5;
-                    ctx.beginPath();
-                    ctx.moveTo(lineX, lineY);
-                    ctx.lineTo(lineX - Math.cos(speedDir) * lineLength, lineY - Math.sin(speedDir) * lineLength);
-                    ctx.stroke();
-                }
-
-                // Red-orange glow
-                const fastGradient = ctx.createRadialGradient(
-                    ball.x, ball.y, 0,
-                    ball.x, ball.y, ball.radius * 2
-                );
-                fastGradient.addColorStop(0, '#ffffff');
-                fastGradient.addColorStop(0.3, '#ffaa66');
-                fastGradient.addColorStop(0.6, '#ff4400');
-                fastGradient.addColorStop(1, 'transparent');
-                ctx.fillStyle = fastGradient;
+                // Fast ball effect - simple orange glow (lightweight)
+                // Outer glow
+                ctx.fillStyle = 'rgba(255, 100, 0, 0.4)';
                 ctx.beginPath();
-                ctx.arc(ball.x, ball.y, ball.radius * 2, 0, Math.PI * 2);
+                ctx.arc(ball.x, ball.y, ball.radius * 1.8, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Core
+                // Orange ring
+                ctx.fillStyle = '#ff6600';
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y, ball.radius * 1.2, 0, Math.PI * 2);
+                ctx.fill();
+
+                // White core
                 ctx.fillStyle = '#ffffff';
                 ctx.beginPath();
-                ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+                ctx.arc(ball.x, ball.y, ball.radius * 0.7, 0, Math.PI * 2);
                 ctx.fill();
-
-                ctx.restore();
             } else {
                 // Normal ball glow
                 const gradient = ctx.createRadialGradient(
@@ -1659,32 +1684,31 @@ export function drawFloatingTexts(ctx, floatingTexts) {
     ctx.textBaseline = 'middle';
 
     for (const ft of floatingTexts) {
-        // Slower fade - use squared life for more visible duration
         const alpha = Math.pow(ft.life, 0.7);
         ctx.globalAlpha = alpha;
 
-        // Brighten the color for better visibility
-        const brighterColor = ft.color;
+        // Performance mode: simple text only
+        if (performanceMode) {
+            ctx.fillStyle = ft.color;
+            ctx.fillText(ft.text, ft.x, ft.y);
+            continue;
+        }
 
-        // Add glow effect
-        ctx.shadowColor = brighterColor;
+        // Full effect: glow + outline
+        ctx.shadowColor = ft.color;
         ctx.shadowBlur = 12;
 
-        // Draw dark outline first for contrast
         ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
         ctx.lineWidth = 4;
         ctx.strokeText(ft.text, ft.x, ft.y);
 
-        // Draw the main text
-        ctx.fillStyle = brighterColor;
+        ctx.fillStyle = ft.color;
         ctx.fillText(ft.text, ft.x, ft.y);
 
-        // Draw a second lighter layer for extra pop
         ctx.shadowBlur = 6;
         ctx.fillText(ft.text, ft.x, ft.y);
     }
 
-    // Reset shadow and alpha
     ctx.shadowBlur = 0;
     ctx.globalAlpha = 1;
 }

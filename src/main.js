@@ -21,7 +21,7 @@ import { spawnPositivePowerup, spawnNegativePowerup, updatePowerups as updatePow
 // Systems
 import { createInputManager } from './systems/input.js';
 import { checkPaddleCollision, checkBrickCollisions } from './systems/collision.js';
-import { render, updatePowerupIndicators } from './systems/render.js';
+import { render, updatePowerupIndicators, setPerformanceMode } from './systems/render.js';
 import { createAudioManager } from './systems/audio.js';
 import { createParticleManager } from './systems/particles.js';
 import { createHapticManager } from './systems/haptics.js';
@@ -1518,6 +1518,9 @@ class CodeBreakout {
     }
 
     update() {
+        // Enable performance mode when many balls are active
+        setPerformanceMode(this.balls.length > 8);
+
         this.updatePaddleEntity();
         this.updateBalls();
         this.updatePowerupsEntity();
