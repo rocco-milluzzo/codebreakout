@@ -2873,8 +2873,9 @@ body {
 
 #stats-back-btn {
     display: block;
-    margin: 20px auto 0;
+    margin: 20px auto 40px;
     min-width: 120px;
+    flex-shrink: 0;
 }
 
 /* Stats button style */
