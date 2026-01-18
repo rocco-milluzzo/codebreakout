@@ -1348,58 +1348,98 @@ export function drawBalls(ctx, balls, activePowerups) {
             continue;
         }
 
-        // Fireball effect
+        // Fireball effect - optimized for performance with many balls
         if (ball.fireball) {
-            const firePulse = 0.7 + 0.3 * Math.sin(animationTime * 12);
+            const ballCount = balls.length;
 
-            // Outer fire glow
-            ctx.save();
-            ctx.shadowColor = '#ff4400';
-            ctx.shadowBlur = 20 * firePulse;
+            // Use simplified rendering when there are many balls (performance optimization)
+            if (ballCount > 10) {
+                // Simplified fireball: just colored circles, no gradients or shadows
+                ctx.save();
 
-            // Fire trail particles
-            for (let i = 0; i < 6; i++) {
-                const trailOffset = i * 3;
-                const trailX = ball.x - (ball.dx * trailOffset * 0.15);
-                const trailY = ball.y - (ball.dy * trailOffset * 0.15);
-                const trailSize = ball.radius * (1 - i * 0.12);
-                const trailAlpha = (1 - i * 0.15) * firePulse;
-
-                const fireGrad = ctx.createRadialGradient(trailX, trailY, 0, trailX, trailY, trailSize * 2);
-                fireGrad.addColorStop(0, `rgba(255,255,100,${trailAlpha})`);
-                fireGrad.addColorStop(0.4, `rgba(255,150,0,${trailAlpha * 0.7})`);
-                fireGrad.addColorStop(0.7, `rgba(255,50,0,${trailAlpha * 0.4})`);
-                fireGrad.addColorStop(1, 'rgba(255,0,0,0)');
-                ctx.fillStyle = fireGrad;
+                // Simple trail (2 circles instead of 6 with gradients)
+                const trailAlpha = 0.4;
+                ctx.fillStyle = `rgba(255,100,0,${trailAlpha})`;
                 ctx.beginPath();
-                ctx.arc(trailX, trailY, trailSize * 2, 0, Math.PI * 2);
+                ctx.arc(
+                    ball.x - ball.dx * 0.3,
+                    ball.y - ball.dy * 0.3,
+                    ball.radius * 1.2,
+                    0, Math.PI * 2
+                );
                 ctx.fill();
+
+                // Orange outer
+                ctx.fillStyle = '#ff6600';
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y, ball.radius * 1.3, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Yellow core
+                ctx.fillStyle = '#ffcc00';
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // White center
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y, ball.radius * 0.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+            } else {
+                // Full effect for few balls
+                const firePulse = 0.7 + 0.3 * Math.sin(animationTime * 12);
+
+                ctx.save();
+                ctx.shadowColor = '#ff4400';
+                ctx.shadowBlur = 20 * firePulse;
+
+                // Fire trail particles
+                for (let i = 0; i < 6; i++) {
+                    const trailOffset = i * 3;
+                    const trailX = ball.x - (ball.dx * trailOffset * 0.15);
+                    const trailY = ball.y - (ball.dy * trailOffset * 0.15);
+                    const trailSize = ball.radius * (1 - i * 0.12);
+                    const trailAlpha = (1 - i * 0.15) * firePulse;
+
+                    const fireGrad = ctx.createRadialGradient(trailX, trailY, 0, trailX, trailY, trailSize * 2);
+                    fireGrad.addColorStop(0, `rgba(255,255,100,${trailAlpha})`);
+                    fireGrad.addColorStop(0.4, `rgba(255,150,0,${trailAlpha * 0.7})`);
+                    fireGrad.addColorStop(0.7, `rgba(255,50,0,${trailAlpha * 0.4})`);
+                    fireGrad.addColorStop(1, 'rgba(255,0,0,0)');
+                    ctx.fillStyle = fireGrad;
+                    ctx.beginPath();
+                    ctx.arc(trailX, trailY, trailSize * 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // Fire core gradient
+                const fireGradient = ctx.createRadialGradient(
+                    ball.x, ball.y, 0,
+                    ball.x, ball.y, ball.radius * 2.5
+                );
+                fireGradient.addColorStop(0, '#ffffff');
+                fireGradient.addColorStop(0.2, '#ffffaa');
+                fireGradient.addColorStop(0.4, '#ffaa00');
+                fireGradient.addColorStop(0.6, '#ff6600');
+                fireGradient.addColorStop(0.8, '#ff3300');
+                fireGradient.addColorStop(1, 'transparent');
+
+                ctx.fillStyle = fireGradient;
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y, ball.radius * 2.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Bright white core
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y, ball.radius * 0.8, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
             }
-
-            // Fire core gradient
-            const fireGradient = ctx.createRadialGradient(
-                ball.x, ball.y, 0,
-                ball.x, ball.y, ball.radius * 2.5
-            );
-            fireGradient.addColorStop(0, '#ffffff');
-            fireGradient.addColorStop(0.2, '#ffffaa');
-            fireGradient.addColorStop(0.4, '#ffaa00');
-            fireGradient.addColorStop(0.6, '#ff6600');
-            fireGradient.addColorStop(0.8, '#ff3300');
-            fireGradient.addColorStop(1, 'transparent');
-
-            ctx.fillStyle = fireGradient;
-            ctx.beginPath();
-            ctx.arc(ball.x, ball.y, ball.radius * 2.5, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Bright white core
-            ctx.fillStyle = '#ffffff';
-            ctx.beginPath();
-            ctx.arc(ball.x, ball.y, ball.radius * 0.8, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.restore();
         } else {
             // Check for speed-modified ball effects
             const speedRatio = ball.speed / ball.baseSpeed;
