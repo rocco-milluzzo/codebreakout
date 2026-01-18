@@ -2707,7 +2707,7 @@ class CodeBreakout {
     updateBallTrail() {
         // Update enhanced particle-based ball trails
         for (const ball of this.balls) {
-            if (!ball.stuck && ball.visible) {
+            if (!ball.stuck && ball.visible !== false) {
                 this.particles.updateBallTrail(ball.id, ball.x, ball.y);
             } else if (ball.stuck) {
                 // Clear trail when ball is stuck (e.g., caught by magnet)
