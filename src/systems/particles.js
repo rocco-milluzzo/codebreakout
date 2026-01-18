@@ -534,6 +534,9 @@ export class ParticleManager {
      * @param {object} trailCosmetic - Optional trail cosmetic customization
      */
     drawBallTrails(ctx, balls, levelColor = '#00ff88', trailCosmetic = null) {
+        // Skip trails entirely when there are many balls (performance optimization)
+        if (balls.length > 8) return;
+
         ctx.save();
 
         for (const ball of balls) {
