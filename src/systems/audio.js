@@ -443,58 +443,66 @@ export class AudioManager {
      * Play a drum sound at scheduled time
      */
     playDrum(audioCtx, type, volume, time) {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
+        if (!audioCtx) return;
 
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
+        try {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
 
-        if (type === 'kick') {
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(150, time);
-            osc.frequency.exponentialRampToValueAtTime(40, time + 0.1);
-            gain.gain.setValueAtTime(volume, time);
-            gain.gain.exponentialRampToValueAtTime(0.001, time + 0.2);
-            osc.start(time);
-            osc.stop(time + 0.2);
-        } else if (type === 'snare') {
-            // Use pre-allocated noise buffer
-            const noise = audioCtx.createBufferSource();
-            noise.buffer = this.snareBuffer;
-            const noiseGain = audioCtx.createGain();
-            const filter = audioCtx.createBiquadFilter();
-            filter.type = 'highpass';
-            filter.frequency.value = 1000;
-            noise.connect(filter);
-            filter.connect(noiseGain);
-            noiseGain.connect(audioCtx.destination);
-            noiseGain.gain.setValueAtTime(volume * 0.8, time);
-            noiseGain.gain.exponentialRampToValueAtTime(0.001, time + 0.1);
-            noise.start(time);
-            noise.stop(time + 0.1);
-
-            // Body
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(200, time);
-            gain.gain.setValueAtTime(volume * 0.5, time);
-            gain.gain.exponentialRampToValueAtTime(0.001, time + 0.08);
-            osc.start(time);
-            osc.stop(time + 0.08);
-        } else if (type === 'hihat') {
-            // Use pre-allocated noise buffer
-            const noise = audioCtx.createBufferSource();
-            noise.buffer = this.hihatBuffer;
-            const filter = audioCtx.createBiquadFilter();
-            filter.type = 'highpass';
-            filter.frequency.value = 7000;
-            noise.connect(filter);
-            filter.connect(gain);
+            osc.connect(gain);
             gain.connect(audioCtx.destination);
-            gain.gain.setValueAtTime(volume, time);
-            gain.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
-            noise.start(time);
-            noise.stop(time + 0.05);
-            return; // Don't start the oscillator
+
+            if (type === 'kick') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(150, time);
+                osc.frequency.exponentialRampToValueAtTime(40, time + 0.1);
+                gain.gain.setValueAtTime(volume, time);
+                gain.gain.exponentialRampToValueAtTime(0.001, time + 0.2);
+                osc.start(time);
+                osc.stop(time + 0.2);
+            } else if (type === 'snare') {
+                // Use pre-allocated noise buffer
+                if (!this.snareBuffer) return;
+                const noise = audioCtx.createBufferSource();
+                noise.buffer = this.snareBuffer;
+                const noiseGain = audioCtx.createGain();
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'highpass';
+                filter.frequency.value = 1000;
+                noise.connect(filter);
+                filter.connect(noiseGain);
+                noiseGain.connect(audioCtx.destination);
+                noiseGain.gain.setValueAtTime(volume * 0.8, time);
+                noiseGain.gain.exponentialRampToValueAtTime(0.001, time + 0.1);
+                noise.start(time);
+                noise.stop(time + 0.1);
+
+                // Body
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(200, time);
+                gain.gain.setValueAtTime(volume * 0.5, time);
+                gain.gain.exponentialRampToValueAtTime(0.001, time + 0.08);
+                osc.start(time);
+                osc.stop(time + 0.08);
+            } else if (type === 'hihat') {
+                // Use pre-allocated noise buffer
+                if (!this.hihatBuffer) return;
+                const noise = audioCtx.createBufferSource();
+                noise.buffer = this.hihatBuffer;
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'highpass';
+                filter.frequency.value = 7000;
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(audioCtx.destination);
+                gain.gain.setValueAtTime(volume, time);
+                gain.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
+                noise.start(time);
+                noise.stop(time + 0.05);
+                return; // Don't start the oscillator
+            }
+        } catch (e) {
+            // Audio playback failed silently
         }
     }
 
@@ -502,74 +510,92 @@ export class AudioManager {
      * Play bass note at scheduled time
      */
     playBass(audioCtx, freq, volume, time) {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        const filter = this.createFilter(audioCtx, 'lowpass', 400);
+        if (!audioCtx) return;
 
-        osc.connect(filter);
-        filter.connect(gain);
-        gain.connect(audioCtx.destination);
+        try {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            const filter = this.createFilter(audioCtx, 'lowpass', 400);
 
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(freq, time);
-        gain.gain.setValueAtTime(volume, time);
-        gain.gain.setValueAtTime(volume, time + 0.1);
-        gain.gain.exponentialRampToValueAtTime(0.001, time + 0.25);
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
 
-        osc.start(time);
-        osc.stop(time + 0.25);
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(freq, time);
+            gain.gain.setValueAtTime(volume, time);
+            gain.gain.setValueAtTime(volume, time + 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.001, time + 0.25);
+
+            osc.start(time);
+            osc.stop(time + 0.25);
+        } catch (e) {
+            // Audio playback failed silently
+        }
     }
 
     /**
      * Play arpeggio note at scheduled time
      */
     playArp(audioCtx, freq, volume, time) {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        const filter = this.createFilter(audioCtx, 'lowpass', 2000 + this.intensity * 3000);
+        if (!audioCtx) return;
 
-        osc.connect(filter);
-        filter.connect(gain);
-        gain.connect(audioCtx.destination);
+        try {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            const filter = this.createFilter(audioCtx, 'lowpass', 2000 + this.intensity * 3000);
 
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(freq, time);
-        gain.gain.setValueAtTime(0, time);
-        gain.gain.linearRampToValueAtTime(volume, time + 0.01);
-        gain.gain.exponentialRampToValueAtTime(0.001, time + 0.15);
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
 
-        osc.start(time);
-        osc.stop(time + 0.15);
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(freq, time);
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(volume, time + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.001, time + 0.15);
+
+            osc.start(time);
+            osc.stop(time + 0.15);
+        } catch (e) {
+            // Audio playback failed silently
+        }
     }
 
     /**
      * Play pad chord at scheduled time
      */
     playPad(audioCtx, root, scale, volume, time) {
+        if (!audioCtx) return;
+
         const chordNotes = [0, 2, 4]; // Root, third, fifth from scale
 
         chordNotes.forEach((noteIdx) => {
-            const freq = root * Math.pow(2, scale[noteIdx] / 12);
+            try {
+                const freq = root * Math.pow(2, scale[noteIdx] / 12);
 
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            const filter = this.createFilter(audioCtx, 'lowpass', 800);
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                const filter = this.createFilter(audioCtx, 'lowpass', 800);
 
-            osc.connect(filter);
-            filter.connect(gain);
-            gain.connect(audioCtx.destination);
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(audioCtx.destination);
 
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(freq, time);
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, time);
 
-            // Slow attack, long sustain
-            gain.gain.setValueAtTime(0, time);
-            gain.gain.linearRampToValueAtTime(volume, time + 0.3);
-            gain.gain.setValueAtTime(volume, time + 1.5);
-            gain.gain.exponentialRampToValueAtTime(0.001, time + 2.5);
+                // Slow attack, long sustain
+                gain.gain.setValueAtTime(0, time);
+                gain.gain.linearRampToValueAtTime(volume, time + 0.3);
+                gain.gain.setValueAtTime(volume, time + 1.5);
+                gain.gain.exponentialRampToValueAtTime(0.001, time + 2.5);
 
-            osc.start(time);
-            osc.stop(time + 2.5);
+                osc.start(time);
+                osc.stop(time + 2.5);
+            } catch (e) {
+                // Audio playback failed silently
+            }
         });
     }
 

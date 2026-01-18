@@ -373,7 +373,7 @@ class CodeBreakout {
         document.getElementById('customize-back-btn').addEventListener('click', () => this.showScreen('start'));
 
         // Theme button
-        document.getElementById('theme-btn').addEventListener('click', () => this.handleThemeChange());
+        document.getElementById('title-prefix').addEventListener('click', () => this.handleThemeChange());
 
         // Language button
         document.getElementById('lang-btn').addEventListener('click', () => this.handleLanguageChange());
@@ -1111,8 +1111,9 @@ class CodeBreakout {
             }
         }
 
-        // Create bricks
-        const { bricks, portalPairs, totalBreakable } = createBricks(levelData);
+        // Create bricks with themed color
+        const levelDataWithTheme = { ...levelData, color: themedLevel.color };
+        const { bricks, portalPairs, totalBreakable } = createBricks(levelDataWithTheme);
         this.bricks = bricks;
         this.portalPairs = portalPairs;
         this.state.totalBricks = totalBreakable;
@@ -2718,7 +2719,12 @@ class CodeBreakout {
         });
 
         // Render enhanced particles and effects
-        this.particles.drawBallTrails(this.ctx, this.balls, LEVELS[this.state.level].color);
+        const trailCosmetic = this.progress ? getCosmeticById('trail', this.progress.selectedTrail) : null;
+        // Only draw trails if a non-default trail cosmetic is selected
+        if (trailCosmetic && trailCosmetic.color) {
+            const themedColor = getThemedLevel(this.state.level).color;
+            this.particles.drawBallTrails(this.ctx, this.balls, themedColor, trailCosmetic);
+        }
         this.particles.drawParticles(this.ctx);
         this.particles.drawScreenEffects(this.ctx, this.canvas);
 
@@ -3014,17 +3020,35 @@ class CodeBreakout {
 
     renderAchievementsGrid() {
         const grid = document.getElementById('achievements-grid');
-        // Note: Achievement data (icon, name, desc) comes from trusted ACHIEVEMENTS constant
-        grid.innerHTML = ACHIEVEMENTS.map(ach => {
+        grid.textContent = '';
+
+        for (const ach of ACHIEVEMENTS) {
             const isUnlocked = this.unlockedAchievements.includes(ach.id);
-            return `
-                <div class="achievement-item ${isUnlocked ? 'unlocked' : 'locked'}">
-                    <div class="icon">${ach.icon}</div>
-                    <div class="name">${ach.name}</div>
-                    <div class="desc">${ach.desc}</div>
-                </div>
-            `;
-        }).join('');
+            // Get translated name and description, fallback to default
+            const translated = t(`achievements.${ach.id}`);
+            const name = translated && translated.name ? translated.name : ach.name;
+            const desc = translated && translated.desc ? translated.desc : ach.desc;
+
+            const item = document.createElement('div');
+            item.className = `achievement-item ${isUnlocked ? 'unlocked' : 'locked'}`;
+
+            const iconDiv = document.createElement('div');
+            iconDiv.className = 'icon';
+            iconDiv.textContent = ach.icon;
+
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'name';
+            nameDiv.textContent = name;
+
+            const descDiv = document.createElement('div');
+            descDiv.className = 'desc';
+            descDiv.textContent = desc;
+
+            item.appendChild(iconDiv);
+            item.appendChild(nameDiv);
+            item.appendChild(descDiv);
+            grid.appendChild(item);
+        }
 
         document.getElementById('achievements-count').textContent =
             `${this.unlockedAchievements.length}/${ACHIEVEMENTS.length}`;
@@ -3054,14 +3078,31 @@ class CodeBreakout {
     showAchievementToast(achievement) {
         const toast = document.createElement('div');
         toast.className = 'achievement-toast';
-        // Note: Achievement data (icon, name) comes from trusted ACHIEVEMENTS constant
-        toast.innerHTML = `
-            <div class="toast-icon">${achievement.icon}</div>
-            <div class="toast-content">
-                <div class="toast-title">ACHIEVEMENT UNLOCKED!</div>
-                <div class="toast-name">${achievement.name}</div>
-            </div>
-        `;
+
+        // Get translated name
+        const translated = t(`achievements.${achievement.id}`);
+        const name = translated && translated.name ? translated.name : achievement.name;
+
+        const iconDiv = document.createElement('div');
+        iconDiv.className = 'toast-icon';
+        iconDiv.textContent = achievement.icon;
+
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'toast-content';
+
+        const titleDiv = document.createElement('div');
+        titleDiv.className = 'toast-title';
+        titleDiv.textContent = t('achievementsScreen.unlocked') + '!';
+
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'toast-name';
+        nameDiv.textContent = name;
+
+        contentDiv.appendChild(titleDiv);
+        contentDiv.appendChild(nameDiv);
+        toast.appendChild(iconDiv);
+        toast.appendChild(contentDiv);
+
         document.body.appendChild(toast);
         setTimeout(() => toast.remove(), 3000);
         this.audio.playSound('levelUp');

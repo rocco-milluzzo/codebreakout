@@ -16,6 +16,24 @@ function getStorageKey(mode = 'campaign') {
 let apiAvailable = null;
 
 /**
+ * Create a timeout signal compatible with older browsers
+ * AbortSignal.timeout() is not supported in Safari < 16
+ * @param {number} ms - Timeout in milliseconds
+ * @returns {AbortSignal}
+ */
+function createTimeoutSignal(ms) {
+    // Use native AbortSignal.timeout if available
+    if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
+        return AbortSignal.timeout(ms);
+    }
+
+    // Fallback for older browsers
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), ms);
+    return controller.signal;
+}
+
+/**
  * Check if API is available
  * @returns {Promise<boolean>}
  */
@@ -25,7 +43,7 @@ async function checkApiAvailability() {
     try {
         const response = await fetch(`${API_BASE}/health`, {
             method: 'GET',
-            signal: AbortSignal.timeout(2000),
+            signal: createTimeoutSignal(2000),
         });
         apiAvailable = response.ok;
     } catch {

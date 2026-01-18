@@ -48,23 +48,19 @@ export function applyTheme(themeId) {
     root.style.setProperty('--accent-dim', theme.accentDim);
     root.style.setProperty('--accent-rgb', hexToRgbString(theme.accent));
 
+    // Apply theme class to body for background styling
+    document.body.classList.remove('theme-code', 'theme-cake', 'theme-astro');
+    document.body.classList.add(`theme-${themeId}`);
+
     // Apply theme visual style to render system
     if (theme.style) {
         setThemeStyle(theme.style);
     }
 
-    // Update title - using DOM manipulation instead of innerHTML
-    const titleElement = document.querySelector('.title');
-    if (titleElement) {
-        // Clear existing content
-        titleElement.textContent = '';
-        // Add prefix text
-        titleElement.appendChild(document.createTextNode(theme.prefix));
-        // Create and add accent span
-        const accentSpan = document.createElement('span');
-        accentSpan.className = 'accent shimmer';
-        accentSpan.textContent = 'BREAKOUT';
-        titleElement.appendChild(accentSpan);
+    // Update title prefix only (structure is preserved for click handling)
+    const titlePrefix = document.getElementById('title-prefix');
+    if (titlePrefix) {
+        titlePrefix.textContent = theme.prefix;
     }
 
     // Update tagline
@@ -106,12 +102,6 @@ export function applyTheme(themeId) {
     const themeColor = document.querySelector('meta[name="theme-color"]');
     if (themeColor) {
         themeColor.content = theme.accent;
-    }
-
-    // Update theme button text if it exists
-    const themeBtn = document.getElementById('theme-btn');
-    if (themeBtn) {
-        themeBtn.textContent = `THEME: ${theme.prefix}`;
     }
 }
 

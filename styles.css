@@ -228,6 +228,30 @@ body {
     animation: glowPulse 2s ease-in-out infinite;
 }
 
+/* Theme switcher in title */
+.theme-switcher {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.theme-switcher:hover {
+    opacity: 0.8;
+}
+
+.theme-switcher:hover::after {
+    content: '↻';
+    position: absolute;
+    font-size: 0.4em;
+    top: -0.5em;
+    right: -0.8em;
+    opacity: 0.6;
+}
+
+.theme-switcher:active {
+    transform: scale(0.95);
+}
+
 .shimmer {
     background: linear-gradient(
         90deg,
@@ -277,7 +301,9 @@ body {
     );
     background-size: 400% 400%;
     animation: gradientShift 15s ease infinite;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* Matrix rain background effect */
@@ -1682,9 +1708,21 @@ body {
         padding: 0.8rem 2rem;
     }
 
+    /* Fix mobile start screen - make footer elements flow normally */
     .controls-hint {
-        bottom: 1.5rem;
+        position: static;
+        margin-top: 1rem;
         font-size: 0.7rem;
+    }
+
+    .credits {
+        position: static;
+        margin-top: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    #start-screen .menu {
+        padding-bottom: 1rem;
     }
 
     #sound-toggle {
@@ -2894,6 +2932,22 @@ body {
    CUSTOMIZE SCREEN
    ============================================================================ */
 
+#customize-screen,
+#achievements-screen {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 20px;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+}
+
+#customize-screen h1,
+#achievements-screen h1 {
+    color: var(--accent);
+    margin-bottom: 20px;
+    font-size: 2rem;
+    text-align: center;
+}
+
 .customize-tabs {
     display: flex;
     gap: 10px;
@@ -3139,5 +3193,182 @@ body {
 
     .achievements-grid {
         grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* ==========================================
+   THEMED BACKGROUNDS
+   ========================================== */
+
+/* CODE Theme - Matrix/Tech (default) */
+.theme-code #start-screen {
+    background: linear-gradient(-45deg, #0a0f0d, #0d1a14, #0a1510, #0d0f14, #0a0f0d);
+    background-size: 400% 400%;
+}
+
+.theme-code #start-screen::before {
+    content: '01001000 { } const let => () 10101010 async await function return 11110000 import export class new 01100110 for while if else switch 00110011 try catch throw finally 11001100 typeof instanceof void 10011001 null undefined NaN true false';
+    color: rgba(0, 255, 136, 0.06);
+}
+
+.theme-code #game-screen {
+    background: radial-gradient(ellipse at center, #0d1a14 0%, #0a0f0d 100%);
+}
+
+/* CAKE Theme - Warm Pastry Colors */
+.theme-cake #start-screen {
+    background: linear-gradient(-45deg, #1a0a14, #1f0d18, #1a0f14, #14080f, #1a0a14);
+    background-size: 400% 400%;
+}
+
+.theme-cake #start-screen::before {
+    content: '🧁 🍪 🍰 🎂 🍩 🍮 🥐 🍫 🧇 🥧 🧁 🍪 🍰 🎂 🍩 🍮 🥐 🍫 🧇 🥧 🧁 🍪 🍰 🎂 🍩 🍮 🥐 🍫 🧇 🥧';
+    color: rgba(255, 105, 180, 0.08);
+    font-size: 1.5rem;
+    letter-spacing: 0.5em;
+    line-height: 3;
+}
+
+.theme-cake #game-screen {
+    background: radial-gradient(ellipse at center, #1f0d18 0%, #1a0a14 100%);
+}
+
+/* ASTRO Theme - Deep Space */
+.theme-astro #start-screen {
+    background: linear-gradient(-45deg, #0a0a1a, #0d0d24, #0f0a1f, #0a0814, #0a0a1a);
+    background-size: 400% 400%;
+}
+
+.theme-astro #start-screen::before {
+    content: '✦ ★ ✧ ☆ ✦ ✵ ✶ ✷ ✸ ✹ ✺ ★ ✦ ✧ ☆ ✦ ✵ ✶ ✷ ✸ ✹ ✺ ★ ✦ ✧ ☆ ✦ ✵ ✶ ✷ ✸ ✹ ✺ ★';
+    color: rgba(147, 112, 219, 0.1);
+    font-size: 1.2rem;
+    letter-spacing: 0.8em;
+    line-height: 2.5;
+}
+
+.theme-astro #game-screen {
+    background: radial-gradient(ellipse at center, #0d0d24 0%, #0a0a1a 100%);
+}
+
+/* Subtle themed glow on game canvas area */
+.theme-code #game-screen::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(0, 255, 136, 0.03) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.theme-cake #game-screen::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(255, 105, 180, 0.03) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.theme-astro #game-screen::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(147, 112, 219, 0.03) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* ==========================================
+   MOBILE UI IMPROVEMENTS
+   ========================================== */
+
+/* Fix level name overflow in HUD */
+.hud-item.level span {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+    .hud-item.level span {
+        max-width: 80px;
+    }
+
+    /* Make sure achievements screen is fully scrollable */
+    #achievements-screen {
+        padding-top: 10px;
+        padding-bottom: calc(30px + env(safe-area-inset-bottom, 0px));
+    }
+
+    #achievements-screen h1 {
+        font-size: 1.5rem;
+        margin-bottom: 10px;
+    }
+
+    .achievements-progress {
+        font-size: 1rem;
+        margin-bottom: 15px;
+    }
+}
+
+@media (max-width: 375px) {
+    .hud-item.level span {
+        max-width: 60px;
+    }
+}
+
+/* ==========================================
+   PERFORMANCE OPTIMIZATIONS
+   ========================================== */
+
+/* Reduce animation complexity on low-power devices */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Optimize heavy animations for mobile */
+@media (max-width: 768px) {
+    /* Simplify matrix rain background */
+    #start-screen::before {
+        animation: none;
+        opacity: 0.5;
+    }
+
+    /* Reduce particle layer complexity */
+    #start-screen::after {
+        animation: none;
+        opacity: 0.3;
+    }
+
+    /* Simplify gradient animation */
+    #start-screen {
+        animation: none;
+        background-position: 0% 50%;
+    }
+
+    /* Simplify glow effects */
+    .glow-text {
+        text-shadow: 0 0 10px var(--accent);
+    }
+
+    .glow-btn {
+        box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.3);
     }
 }

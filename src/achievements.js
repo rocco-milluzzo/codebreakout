@@ -18,6 +18,21 @@ export const ACHIEVEMENTS = [
     { id: 'iron_will', name: 'Iron Will', desc: 'Survive 15 malus powerups', icon: '🦾', requirement: { type: 'malusCount', value: 15 } },
     { id: 'bullet_hell_master', name: 'Bullet Dodger', desc: 'Complete Bullet Hell mode', icon: '💨', requirement: { type: 'bonusType', value: 'bulletHell' } },
     { id: 'speed_runner', name: 'Speed Runner', desc: 'Complete Speed Run mode', icon: '🏃', requirement: { type: 'bonusType', value: 'speedRun' } },
+    // More bonus mode achievements
+    { id: 'bounce_champion', name: 'Bounce Champion', desc: 'Complete Bounce mode', icon: '🦘', requirement: { type: 'bonusType', value: 'doodle' } },
+    { id: 'invasion_defender', name: 'Invasion Defender', desc: 'Complete Invasion mode', icon: '👽', requirement: { type: 'bonusType', value: 'invasion' } },
+    { id: 'multiball_mania', name: 'Multiball Mania', desc: 'Complete Multiball Madness mode', icon: '🎪', requirement: { type: 'bonusType', value: 'multiballMadness' } },
+    // Score milestones
+    { id: 'score_50k', name: 'High Roller', desc: 'Reach 50,000 total score', icon: '💰', requirement: { type: 'totalScore', value: 50000 } },
+    { id: 'score_500k', name: 'Score Titan', desc: 'Reach 500,000 total score', icon: '👑', requirement: { type: 'totalScore', value: 500000 } },
+    // Games played
+    { id: 'games_10', name: 'Getting Started', desc: 'Play 10 games', icon: '🎮', requirement: { type: 'gamesPlayed', value: 10 } },
+    { id: 'games_50', name: 'Dedicated Player', desc: 'Play 50 games', icon: '🕹️', requirement: { type: 'gamesPlayed', value: 50 } },
+    // Play time (in seconds)
+    { id: 'time_30min', name: 'Time Flies', desc: 'Play for 30 minutes total', icon: '⏱️', requirement: { type: 'playTime', value: 1800 } },
+    { id: 'time_2hours', name: 'Marathon Gamer', desc: 'Play for 2 hours total', icon: '🏅', requirement: { type: 'playTime', value: 7200 } },
+    // Perfect levels
+    { id: 'perfect_5', name: 'Precision Master', desc: 'Complete 5 perfect levels', icon: '🎯', requirement: { type: 'perfect', value: 5 } },
 ];
 
 export function getAchievementById(id) {
@@ -35,6 +50,8 @@ export function checkAchievement(achievement, gameState, progress) {
         case 'ballCount': return gameState.maxBallsThisGame >= req.value;
         case 'totalScore': return progress.totalScore >= req.value;
         case 'malusCount': return gameState.malusCollected >= req.value;
+        case 'gamesPlayed': return progress.gamesPlayed >= req.value;
+        case 'playTime': return progress.totalPlayTime >= req.value;
         default: return false;
     }
 }

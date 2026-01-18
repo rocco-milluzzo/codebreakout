@@ -4,6 +4,45 @@
 // ============================================================================
 
 import { CONFIG } from '../config.js';
+
+// Polyfill for roundRect (Safari < 16 compatibility)
+if (typeof CanvasRenderingContext2D !== 'undefined' &&
+    !CanvasRenderingContext2D.prototype.roundRect) {
+    CanvasRenderingContext2D.prototype.roundRect = function(x, y, width, height, radii) {
+        // Normalize radii to array format
+        let r;
+        if (typeof radii === 'undefined') {
+            r = [0, 0, 0, 0];
+        } else if (typeof radii === 'number') {
+            r = [radii, radii, radii, radii];
+        } else if (Array.isArray(radii)) {
+            if (radii.length === 1) r = [radii[0], radii[0], radii[0], radii[0]];
+            else if (radii.length === 2) r = [radii[0], radii[1], radii[0], radii[1]];
+            else if (radii.length === 3) r = [radii[0], radii[1], radii[2], radii[1]];
+            else r = radii.slice(0, 4);
+        } else {
+            r = [0, 0, 0, 0];
+        }
+
+        // Clamp radii to half of smallest dimension
+        const maxRadius = Math.min(width, height) / 2;
+        r = r.map(radius => Math.min(radius, maxRadius));
+
+        // Draw rounded rectangle path
+        this.moveTo(x + r[0], y);
+        this.lineTo(x + width - r[1], y);
+        this.arcTo(x + width, y, x + width, y + r[1], r[1]);
+        this.lineTo(x + width, y + height - r[2]);
+        this.arcTo(x + width, y + height, x + width - r[2], y + height, r[2]);
+        this.lineTo(x + r[3], y + height);
+        this.arcTo(x, y + height, x, y + height - r[3], r[3]);
+        this.lineTo(x, y + r[0]);
+        this.arcTo(x, y, x + r[0], y, r[0]);
+        this.closePath();
+
+        return this;
+    };
+}
 import { POWERUP_TYPES } from '../powerups.js';
 
 // Animation time for animated effects
@@ -981,7 +1020,12 @@ export function drawPaddle(ctx, paddle, levelData, activePowerups, cosmetic = nu
     const { x, y, width, height } = paddle;
     const w = width;
     const h = height;
-    const cornerRadius = 4;
+    const paddleStyle = currentThemeStyle.paddleStyle || 'tech';
+
+    // Use theme-specific corner radius
+    let cornerRadius = 4;
+    if (paddleStyle === 'candy') cornerRadius = 10;
+    else if (paddleStyle === 'spaceship') cornerRadius = 2;
 
     ctx.save();
 
@@ -1024,8 +1068,103 @@ export function drawPaddle(ctx, paddle, levelData, activePowerups, cosmetic = nu
             }
         }
         ctx.restore();
+    } else if (paddleStyle === 'candy') {
+        // CAKE theme - Candy/pastry style paddle
+        ctx.restore();
+
+        // Drop shadow
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.4)';
+        ctx.shadowBlur = 6;
+        ctx.shadowOffsetY = 3;
+
+        // Main body - soft rounded
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, cornerRadius);
+        const candyGradient = ctx.createLinearGradient(x, y, x, y + h);
+        candyGradient.addColorStop(0, lightenColor(paddleColor, 0.3));
+        candyGradient.addColorStop(0.4, paddleColor);
+        candyGradient.addColorStop(1, darkenColor(paddleColor, 0.2));
+        ctx.fillStyle = candyGradient;
+        ctx.fill();
+        ctx.restore();
+
+        // Frosting/cream on top
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.beginPath();
+        ctx.ellipse(x + w / 2, y + 3, w * 0.4, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Sprinkles
+        const sprinkleColors = ['#ff69b4', '#ffff00', '#00ff88', '#00ccff'];
+        for (let i = 0; i < 5; i++) {
+            const sx = x + 10 + (w - 20) * (i / 4);
+            const sy = y + h * 0.5 + Math.sin(sx + animationTime) * 2;
+            ctx.fillStyle = sprinkleColors[i % sprinkleColors.length];
+            ctx.fillRect(sx - 2, sy - 1, 4, 2);
+        }
+
+        // Soft border
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(x + 2, y + 2, w - 4, h - 4, cornerRadius - 1);
+        ctx.stroke();
+
+    } else if (paddleStyle === 'spaceship') {
+        // ASTRO theme - Spaceship style paddle
+        ctx.restore();
+
+        // Outer glow
+        ctx.save();
+        ctx.shadowColor = glowColor;
+        ctx.shadowBlur = 12;
+
+        // Main body - angular spaceship shape
+        ctx.beginPath();
+        ctx.moveTo(x + 8, y);
+        ctx.lineTo(x + w - 8, y);
+        ctx.lineTo(x + w, y + h / 2);
+        ctx.lineTo(x + w - 8, y + h);
+        ctx.lineTo(x + 8, y + h);
+        ctx.lineTo(x, y + h / 2);
+        ctx.closePath();
+
+        const spaceGradient = ctx.createLinearGradient(x, y, x, y + h);
+        spaceGradient.addColorStop(0, lightenColor(paddleColor, 0.4));
+        spaceGradient.addColorStop(0.5, paddleColor);
+        spaceGradient.addColorStop(1, darkenColor(paddleColor, 0.3));
+        ctx.fillStyle = spaceGradient;
+        ctx.fill();
+        ctx.restore();
+
+        // Cockpit window
+        const cockpitX = x + w / 2;
+        ctx.fillStyle = 'rgba(100,200,255,0.6)';
+        ctx.beginPath();
+        ctx.ellipse(cockpitX, y + h / 2, 12, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Engine glow (left and right)
+        const enginePulse = 0.5 + 0.5 * Math.sin(animationTime * 8);
+        ctx.fillStyle = `rgba(255,150,50,${enginePulse})`;
+        ctx.beginPath();
+        ctx.arc(x + 4, y + h / 2, 4, 0, Math.PI * 2);
+        ctx.arc(x + w - 4, y + h / 2, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Hull lines
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x + 20, y + 3);
+        ctx.lineTo(x + w - 20, y + 3);
+        ctx.moveTo(x + 20, y + h - 3);
+        ctx.lineTo(x + w - 20, y + h - 3);
+        ctx.stroke();
+
     } else {
-        // Normal rounded paddle with full effects
+        // CODE theme - Tech style paddle (default)
         ctx.restore();
 
         // Outer glow effect

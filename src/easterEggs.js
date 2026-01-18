@@ -3,8 +3,10 @@
 // Character quotes and special attacks triggered by combo streaks
 // ============================================================================
 
-// Epic character quotes - triggered by combo streaks
-export const STREAK_QUOTES = {
+import { getCurrentLanguage } from './i18n.js';
+
+// Epic character quotes - triggered by combo streaks (English)
+const STREAK_QUOTES_EN = {
     // Low combo (x1.5-2.0)
     LOW: [
         { text: 'Believe it!', char: 'Naruto' },
@@ -62,6 +64,74 @@ export const STREAK_QUOTES = {
         { text: 'GG EZ', char: null },
     ],
 };
+
+// Italian quotes - many are kept original as they're iconic worldwide
+const STREAK_QUOTES_IT = {
+    // Low combo (x1.5-2.0)
+    LOW: [
+        { text: 'Credici!', char: 'Naruto' },
+        { text: 'Let\'s-a go!', char: 'Mario' },
+        { text: 'COWABUNGA!', char: 'Tartarughe Ninja' },
+        { text: 'Groovy!', char: 'Ash Williams' },
+        { text: 'Sì, scienza!', char: 'Jesse Pinkman' },
+        { text: 'Yippee-ki-yay!', char: 'John McClane' },
+        { text: 'Allons-y!', char: 'Il Dottore' },
+    ],
+    // Medium combo (x2.0-3.0)
+    MEDIUM: [
+        { text: 'Brucia, mio cosmo!', char: 'Seiya' },
+        { text: 'Tornerò!', char: 'Terminator' },
+        { text: 'Per il potere di Grayskull!', char: 'He-Man' },
+        { text: 'Verso l\'infinito e oltre!', char: 'Buzz Lightyear' },
+        { text: 'Vendicatori, uniti!', char: 'Capitan America' },
+        { text: 'GET OVER HERE!', char: 'Scorpion' },
+        { text: 'FINISCILO!', char: 'Mortal Kombat' },
+        { text: 'Wololo!', char: 'Age of Empires' },
+        { text: 'Leeeroy Jenkins!', char: 'Leeroy' },
+        { text: 'Do a barrel roll!', char: 'Peppy Hare' },
+    ],
+    // High combo (x3.0-4.0)
+    HIGH: [
+        { text: 'ATATATATATA!', char: 'Kenshiro' },
+        { text: 'Hasta la vista, baby!', char: 'Terminator' },
+        { text: 'Saluta il mio amichetto!', char: 'Scarface' },
+        { text: 'QUESTA È SPARTA!', char: 'Leonida' },
+        { text: 'PLUS ULTRA!', char: 'All Might' },
+        { text: 'Tu sei già morto...', char: 'Kenshiro' },
+        { text: 'FATALITY!', char: 'Mortal Kombat' },
+        { text: 'Hadouken!', char: 'Ryu' },
+        { text: 'SHORYUKEN!', char: 'Ken' },
+        { text: 'È pericoloso andare da soli!', char: 'Vecchio' },
+        { text: 'SOTOMAYOR!', char: 'Aldo Giovanni e Giacomo' },
+        { text: 'WASTED', char: 'GTA' },
+        { text: 'Lode al sole!', char: 'Solaire' },
+    ],
+    // Epic combo (x4.0+)
+    EPIC: [
+        { text: 'È OLTRE 9000!', char: 'Vegeta' },
+        { text: 'Questa non è la mia forma finale!', char: 'Freezer' },
+        { text: 'NANI?!', char: null },
+        { text: 'Io sono inevitabile!', char: 'Thanos' },
+        { text: 'POTERE ILLIMITATO!', char: 'Palpatine' },
+        { text: 'TU NON PUOI PASSARE!', char: 'Gandalf' },
+        { text: 'DRACARYS!', char: 'Daenerys' },
+        { text: 'Io sono Iron Man.', char: 'Tony Stark' },
+        { text: 'AMMIRATEMI!', char: 'Nux' },
+        { text: 'IO SONO GROOT!', char: 'Groot' },
+        { text: 'URLO DI VITTORIA!', char: 'SpongeBob' },
+        { text: 'SHOW ME YOUR MOVES!', char: 'Captain Falcon' },
+        { text: 'FALCON PUNCH!', char: 'Captain Falcon' },
+        { text: 'GG EZ', char: null },
+    ],
+};
+
+// Get quotes for current language
+export function getStreakQuotes() {
+    return getCurrentLanguage() === 'it' ? STREAK_QUOTES_IT : STREAK_QUOTES_EN;
+}
+
+// Export for backward compatibility with tests
+export { STREAK_QUOTES_EN as STREAK_QUOTES };
 
 // Special attacks - triggered rarely on EPIC tier
 export const SPECIAL_ATTACKS = {
@@ -122,10 +192,10 @@ export function getComboTier(multiplier) {
  * Get quote for combo tier using deck system (no repeats until all shown)
  */
 export function getStreakQuote(tier) {
-    const quotes = STREAK_QUOTES[tier];
+    const quotes = getStreakQuotes()[tier];
     if (!quotes) return null;
 
-    // Refill and shuffle deck if empty
+    // Refill and shuffle deck if empty or language changed
     if (quoteDecks[tier].length === 0) {
         quoteDecks[tier] = shuffleArray(quotes);
     }
