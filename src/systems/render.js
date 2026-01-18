@@ -328,9 +328,9 @@ function drawRoundedBrick(ctx, x, y, width, height, color1, color2) {
 function drawSpaceBrick(ctx, x, y, width, height, color1, color2) {
     const radius = 8;
 
-    // Outer glow
+    // Outer glow (subtle)
     ctx.shadowColor = color1;
-    ctx.shadowBlur = 10;
+    ctx.shadowBlur = 5;
 
     // Main brick with subtle oval shape
     const gradient = ctx.createRadialGradient(
