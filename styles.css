@@ -2938,6 +2938,15 @@ body {
     -webkit-overflow-scrolling: touch;
     padding: 20px;
     padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    justify-content: flex-start;
+    padding-top: 40px;
+}
+
+#achievements-back-btn,
+#customize-back-btn {
+    margin-top: auto;
+    margin-bottom: 20px;
+    flex-shrink: 0;
 }
 
 #customize-screen h1,
@@ -3307,7 +3316,7 @@ body {
 
     /* Make sure achievements screen is fully scrollable */
     #achievements-screen {
-        padding-top: 10px;
+        padding-top: 20px;
         padding-bottom: calc(30px + env(safe-area-inset-bottom, 0px));
     }
 
@@ -3319,6 +3328,12 @@ body {
     .achievements-progress {
         font-size: 1rem;
         margin-bottom: 15px;
+    }
+
+    #achievements-back-btn,
+    #customize-back-btn {
+        margin-bottom: 30px;
+        min-height: 44px;
     }
 }
 
