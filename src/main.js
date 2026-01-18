@@ -345,6 +345,15 @@ class CodeBreakout {
         document.getElementById('confirm-quit-btn').addEventListener('click', () => this.confirmQuit());
         document.getElementById('cancel-quit-btn').addEventListener('click', () => this.cancelQuit());
         document.getElementById('next-level-btn').addEventListener('click', () => this.nextLevel());
+
+        // Allow Enter key to proceed to next level on level-complete screen
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Enter' && this.state.screen === 'level-complete') {
+                e.preventDefault();
+                this.nextLevel();
+            }
+        });
+
         document.getElementById('play-again-btn').addEventListener('click', () => this.playAgain());
         document.getElementById('retry-bonus-btn').addEventListener('click', () => this.retryBonus());
         document.getElementById('back-to-menu-btn').addEventListener('click', () => this.backToMenu());
