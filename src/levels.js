@@ -300,8 +300,8 @@ export const LEVELS = [
         paddleWidth: 140,           // Wide paddle to manage many balls
         ballSpeed: 4,
         brickPattern: 'multiballMadness',
-        powerupChance: 0,           // No powerups
-        powerupRarity: 0,
+        powerupChance: 0.15,        // Powerups enabled
+        powerupRarity: 1.0,
         mechanics: ['bonus_stage'],
         bonus: {
             type: 'multiballMadness',
