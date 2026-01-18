@@ -36,24 +36,28 @@ export function updatePaddle(paddle, keys, mouseX, touchX) {
     const invert = paddle.invertedControls ? -1 : 1;
     const speed = CONFIG.PADDLE_SPEED * invert;
 
-    // Keyboard control
-    if (keys['ArrowLeft'] || keys['KeyA']) {
-        paddle.x -= speed;
-    }
-    if (keys['ArrowRight'] || keys['KeyD']) {
-        paddle.x += speed;
-    }
+    // Check if keyboard movement keys are pressed
+    const keyboardActive = keys['ArrowLeft'] || keys['KeyA'] || keys['ArrowRight'] || keys['KeyD'];
 
-    // Touch control (priority over mouse)
-    if (touchX !== null) {
+    // Keyboard control takes priority when keys are pressed
+    if (keyboardActive) {
+        if (keys['ArrowLeft'] || keys['KeyA']) {
+            paddle.x -= speed;
+        }
+        if (keys['ArrowRight'] || keys['KeyD']) {
+            paddle.x += speed;
+        }
+    } else if (touchX !== null) {
+        // Touch control (priority over mouse when no keyboard)
         if (paddle.invertedControls) {
-            // Invert mouse/touch position around screen center
+            // Invert touch position around screen center
             const invertedX = CONFIG.CANVAS_WIDTH - touchX;
             paddle.x = invertedX - paddle.width / 2;
         } else {
             paddle.x = touchX - paddle.width / 2;
         }
     } else if (mouseX) {
+        // Mouse control (only when no keyboard or touch)
         if (paddle.invertedControls) {
             const invertedX = CONFIG.CANVAS_WIDTH - mouseX;
             paddle.x = invertedX - paddle.width / 2;
