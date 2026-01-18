@@ -41,7 +41,13 @@ export function checkPaddleCollision(ball, paddle) {
         ball.x <= paddleRight) {
 
         // Calculate bounce angle based on hit position
-        const hitPos = (ball.x - paddle.x) / paddle.width;
+        let hitPos = (ball.x - paddle.x) / paddle.width;
+
+        // Glitched balls have random bounce angle
+        if (ball.visible === false) {
+            hitPos = Math.random(); // Random hit position for chaotic bounce
+        }
+
         const angle = (hitPos - 0.5) * (Math.PI / 2); // -45 to +45 degrees
 
         // Calculate new velocity
@@ -93,6 +99,16 @@ export function checkBrickCollision(ball, brick) {
  * @param {string} side - Collision side ('horizontal' or 'vertical')
  */
 export function applyBrickBounce(ball, side) {
+    // Glitched balls have random bounce direction
+    if (ball.visible === false) {
+        const speed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+        // Random angle between -60 and +60 degrees from vertical (going up)
+        const randomAngle = (Math.random() - 0.5) * (Math.PI * 2 / 3);
+        ball.dx = Math.sin(randomAngle) * speed;
+        ball.dy = -Math.abs(Math.cos(randomAngle) * speed);
+        return;
+    }
+
     if (side === 'horizontal') {
         ball.dx *= -1;
     } else {
