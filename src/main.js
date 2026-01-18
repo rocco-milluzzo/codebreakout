@@ -2031,7 +2031,8 @@ class CodeBreakout {
         const oneUp = document.createElement('div');
         oneUp.className = 'one-up-effect';
         oneUp.textContent = '1UP!';
-        document.getElementById('game-container').appendChild(oneUp);
+        // Append to game-screen to ensure it's positioned within the game area
+        document.getElementById('game-screen').appendChild(oneUp);
         setTimeout(() => oneUp.remove(), 1500);
     }
 
