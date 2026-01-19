@@ -46,6 +46,19 @@ export class GameState {
         this.maxComboThisGame = 1;     // Max combo this game
         this.levelTime = 0;            // Time to complete current level
         this.completedBonusType = null; // Type of bonus completed
+
+        // Juice & Feel - Hit Stop
+        this.hitStop = {
+            active: false,
+            endTime: 0,
+        };
+
+        // Juice & Feel - Slow Motion
+        this.slowMotion = {
+            active: false,
+            endTime: 0,
+            factor: CONFIG.SLOW_MOTION.FACTOR,
+        };
     }
 
     /**
@@ -213,5 +226,73 @@ export class GameState {
         }
 
         return expired;
+    }
+
+    // ========================================================================
+    // JUICE & FEEL - HIT STOP
+    // ========================================================================
+
+    /**
+     * Trigger hit stop (micro-pause)
+     * @param {number} durationMs - Duration in milliseconds
+     */
+    triggerHitStop(durationMs) {
+        this.hitStop.active = true;
+        this.hitStop.endTime = Date.now() + durationMs;
+    }
+
+    /**
+     * Update hit stop state
+     */
+    updateHitStop() {
+        if (this.hitStop.active && Date.now() > this.hitStop.endTime) {
+            this.hitStop.active = false;
+        }
+    }
+
+    /**
+     * Check if game is in hit stop
+     * @returns {boolean}
+     */
+    isHitStopped() {
+        return this.hitStop.active;
+    }
+
+    // ========================================================================
+    // JUICE & FEEL - SLOW MOTION
+    // ========================================================================
+
+    /**
+     * Activate slow motion
+     * @param {number} durationMs - Duration in milliseconds
+     */
+    activateSlowMotion(durationMs = CONFIG.SLOW_MOTION.DURATION) {
+        this.slowMotion.active = true;
+        this.slowMotion.endTime = Date.now() + durationMs;
+    }
+
+    /**
+     * Update slow motion state
+     */
+    updateSlowMotion() {
+        if (this.slowMotion.active && Date.now() > this.slowMotion.endTime) {
+            this.slowMotion.active = false;
+        }
+    }
+
+    /**
+     * Get current time scale (1.0 normal, <1.0 slow motion)
+     * @returns {number}
+     */
+    getTimeScale() {
+        return this.slowMotion.active ? this.slowMotion.factor : 1.0;
+    }
+
+    /**
+     * Check if slow motion is active
+     * @returns {boolean}
+     */
+    isSlowMotionActive() {
+        return this.slowMotion.active;
     }
 }

@@ -376,3 +376,78 @@ export function getBrickCenter(brick) {
         y: brick.y + brick.height / 2,
     };
 }
+
+// ============================================================================
+// JUICE & FEEL - CLUSTER DETECTION
+// ============================================================================
+
+/**
+ * Find all bricks connected to the given brick (same cluster)
+ * @param {object} brick - Starting brick
+ * @param {object[]} bricks - All bricks (non-destroyed)
+ * @returns {object[]} Connected bricks including the starting brick
+ */
+export function findConnectedBricks(brick, bricks) {
+    const connected = [];
+    const checked = new Set();
+    const queue = [brick];
+
+    while (queue.length > 0) {
+        const current = queue.shift();
+        const key = `${current.x},${current.y}`;
+
+        if (checked.has(key)) continue;
+        checked.add(key);
+        connected.push(current);
+
+        // Find adjacent bricks (touching horizontally or vertically)
+        for (const other of bricks) {
+            if (other.destroyed) continue;
+            const otherKey = `${other.x},${other.y}`;
+            if (checked.has(otherKey)) continue;
+
+            // Check if adjacent (within 1 brick distance + padding)
+            const isAdjacent = (
+                Math.abs(other.x - current.x) <= current.width + CONFIG.BRICK_PADDING + 2 &&
+                Math.abs(other.y - current.y) <= current.height + CONFIG.BRICK_PADDING + 2
+            );
+
+            if (isAdjacent) {
+                queue.push(other);
+            }
+        }
+    }
+
+    return connected;
+}
+
+/**
+ * Check if a brick is the last one in its cluster
+ * @param {object} brick - Brick to check
+ * @param {object[]} bricks - All bricks (will filter non-destroyed)
+ * @returns {boolean} True if this is the last brick in its cluster
+ */
+export function isLastInCluster(brick, bricks) {
+    // Get only non-destroyed bricks excluding the current one
+    const activeBricks = bricks.filter(b => !b.destroyed && b !== brick);
+
+    if (activeBricks.length === 0) {
+        // This is the last brick on the entire board
+        return true;
+    }
+
+    // Find connected bricks (excluding the current one which will be destroyed)
+    const connected = findConnectedBricks(brick, activeBricks);
+
+    // If no bricks are connected to where this brick was, it was isolated
+    // But we need to check if any bricks WERE adjacent to this brick
+    const wasAdjacent = activeBricks.some(other => {
+        return (
+            Math.abs(other.x - brick.x) <= brick.width + CONFIG.BRICK_PADDING + 2 &&
+            Math.abs(other.y - brick.y) <= brick.height + CONFIG.BRICK_PADDING + 2
+        );
+    });
+
+    // It's the last in cluster if no other bricks were adjacent
+    return !wasAdjacent;
+}

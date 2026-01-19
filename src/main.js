@@ -15,7 +15,7 @@ import { GameState } from './state.js';
 // Entities
 import { createPaddle, updatePaddle, setPaddleWidthMultiplier, resetPaddleWidth, enableMagnet, useMagnetCatch, enableInvertedControls, disableInvertedControls, enableSplitPaddle, disableSplitPaddle } from './entities/paddle.js';
 import { createBall, createBallOnPaddle, launchBall, updateBallPosition, checkWallCollision, isBallOutOfBounds, bounceOffShield, updateBallVelocity, setBallSpeedMultiplier, scaleBallBaseSpeed, resetBallSpeed, createMultiBalls, syncBallWithPaddle, enableFireball, disableFireball, enableDoodleMode, applyDoodleGravity, applyDoodleJump } from './entities/ball.js';
-import { createBricks, updateMovingBricks, hitBrick, findAdjacentBricks, getBrickCenter } from './entities/brick.js';
+import { createBricks, updateMovingBricks, hitBrick, findAdjacentBricks, getBrickCenter, isLastInCluster } from './entities/brick.js';
 import { spawnPositivePowerup, spawnNegativePowerup, updatePowerups as updatePowerupEntities, fireLasers, updateLaserPosition, isLaserOffScreen, checkLaserBrickCollision } from './entities/powerup.js';
 
 // Systems
@@ -1521,6 +1521,22 @@ class CodeBreakout {
         // Enable performance mode when many balls are active
         setPerformanceMode(this.balls.length > 8);
 
+        // Update hit-stop and slow-motion states
+        this.state.updateHitStop();
+        this.state.updateSlowMotion();
+
+        // Skip physics updates during hit-stop (micro-pause)
+        if (this.state.isHitStopped()) {
+            // Still update visual effects during hit-stop
+            this.updateParticles();
+            this.updateFloatingTexts();
+            this.updateScreenShake();
+            return;
+        }
+
+        // Get time scale for slow-motion
+        this.timeScale = this.state.getTimeScale();
+
         this.updatePaddleEntity();
         this.updateBalls();
         this.updatePowerupsEntity();
@@ -2067,6 +2083,7 @@ class CodeBreakout {
 
     updateBalls() {
         const activeBalls = [];
+        const timeScale = this.timeScale || 1.0;
 
         for (const ball of this.balls) {
             if (ball.stuck) {
@@ -2084,8 +2101,18 @@ class CodeBreakout {
                 ball.dx = Math.max(-6, Math.min(6, ball.dx));  // Cap horizontal speed
             }
 
+            // Apply slow-motion time scale to ball velocity
+            const originalDx = ball.dx;
+            const originalDy = ball.dy;
+            ball.dx *= timeScale;
+            ball.dy *= timeScale;
+
             // Move ball
             updateBallPosition(ball);
+
+            // Restore original velocity (so slow-mo doesn't compound)
+            ball.dx = originalDx;
+            ball.dy = originalDy;
 
             // Wall collisions
             const wallHit = checkWallCollision(ball);
@@ -2184,13 +2211,33 @@ class CodeBreakout {
     handleBrickHit(brick, index) {
         const destroyed = hitBrick(brick);
 
-        // Screen shake based on brick type (enhanced juice)
+        // Screen shake based on brick type with combo bonus
         if (brick.type === 'STANDARD') {
-            this.triggerScreenShake(2, 100);
+            this.triggerScreenShake(2, 100, true);
         } else if (brick.type === 'STRONG') {
-            this.triggerScreenShake(4, 150);
+            this.triggerScreenShake(4, 150, true);
+            // Hit-stop for strong bricks
+            if (CONFIG.HIT_STOP) {
+                this.state.triggerHitStop(CONFIG.HIT_STOP.STRONG_DURATION);
+            }
         } else if (brick.type === 'TOUGH') {
-            this.triggerScreenShake(5, 150);
+            this.triggerScreenShake(5, 150, true);
+            // Hit-stop for tough bricks
+            if (CONFIG.HIT_STOP) {
+                this.state.triggerHitStop(CONFIG.HIT_STOP.TOUGH_DURATION);
+            }
+        } else if (brick.type === 'UNBREAKABLE') {
+            this.triggerScreenShake(6, 200, true);
+            // Hit-stop for unbreakable bricks
+            if (CONFIG.HIT_STOP) {
+                this.state.triggerHitStop(CONFIG.HIT_STOP.UNBREAKABLE_DURATION);
+            }
+        } else if (brick.type === 'HAZARD') {
+            this.triggerScreenShake(5, 150, true);
+            // Hit-stop for hazard bricks
+            if (CONFIG.HIT_STOP) {
+                this.state.triggerHitStop(CONFIG.HIT_STOP.HAZARD_DURATION);
+            }
         }
 
         if (destroyed) {
@@ -2203,6 +2250,10 @@ class CodeBreakout {
     }
 
     destroyBrick(brick, index) {
+        // Check if this is the last brick in its cluster before marking as destroyed
+        // (for slow-motion effect)
+        const wasLastInCluster = isLastInCluster(brick, this.bricks);
+
         // Score
         const points = BRICK_TYPES[brick.type].points * this.state.multiplier;
         this.state.score += Math.floor(points);
@@ -2211,6 +2262,11 @@ class CodeBreakout {
         this.state.incrementMultiplier();
         this.checkStreakQuote();
 
+        // Slow-motion when destroying last brick of a cluster
+        if (wasLastInCluster && CONFIG.SLOW_MOTION) {
+            this.state.activateSlowMotion(CONFIG.SLOW_MOTION.DURATION);
+        }
+
         // Track max combo for achievements
         if (this.state.multiplier > this.maxComboThisGame) {
             this.maxComboThisGame = this.state.multiplier;
@@ -2218,13 +2274,19 @@ class CodeBreakout {
 
         this.state.bricksDestroyed++;
 
-        // Enhanced particles
+        // Enhanced particles with velocity-based scaling
         const center = getBrickCenter(brick);
+        const activeBall = this.balls.find(b => !b.stuck);
+        const ballSpeed = activeBall ? Math.sqrt(activeBall.dx * activeBall.dx + activeBall.dy * activeBall.dy) : 5;
+        const baseSpeed = activeBall ? activeBall.baseSpeed : 5;
+
         this.particles.explodeBrick(
             brick.x, brick.y,
             brick.width, brick.height,
             brick.color,
-            this.state.multiplier / 2
+            this.state.multiplier / 2,
+            ballSpeed,
+            baseSpeed
         );
         // Legacy particles for compatibility
         this.spawnParticles(center.x, center.y, brick.color, 4);
@@ -2335,7 +2397,23 @@ class CodeBreakout {
         }
     }
 
-    triggerScreenShake(intensity, duration) {
+    triggerScreenShake(baseIntensity, baseDuration, useComboBonus = false) {
+        let intensity = baseIntensity;
+        let duration = baseDuration;
+
+        // Apply combo bonus if enabled
+        if (useComboBonus && CONFIG.SCREEN_SHAKE) {
+            const comboBonus = this.state.multiplier * CONFIG.SCREEN_SHAKE.COMBO_MULTIPLIER;
+            intensity = Math.min(
+                baseIntensity + comboBonus,
+                CONFIG.SCREEN_SHAKE.MAX_INTENSITY
+            );
+            duration = Math.min(
+                baseDuration + (this.state.multiplier * CONFIG.SCREEN_SHAKE.COMBO_DURATION_BONUS),
+                CONFIG.SCREEN_SHAKE.MAX_DURATION
+            );
+        }
+
         this.screenShake.intensity = intensity;
         this.screenShake.duration = duration;
     }

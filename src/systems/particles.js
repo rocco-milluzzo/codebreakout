@@ -223,16 +223,34 @@ export class ParticleManager {
 
     /**
      * Create brick explosion particles
+     * @param {number} x - Brick X position
+     * @param {number} y - Brick Y position
+     * @param {number} width - Brick width
+     * @param {number} height - Brick height
+     * @param {string} color - Particle color
+     * @param {number} intensity - Base intensity (from combo multiplier)
+     * @param {number} ballSpeed - Current ball speed (optional, for velocity-based particles)
+     * @param {number} baseSpeed - Base ball speed (optional, for ratio calculation)
      */
-    explodeBrick(x, y, width, height, color, intensity = 1) {
-        // Reduced particle count for performance
-        const particleCount = Math.min(12, Math.floor(6 + intensity * 6));
+    explodeBrick(x, y, width, height, color, intensity = 1, ballSpeed = 5, baseSpeed = 5) {
+        // Calculate speed ratio for velocity-based particle scaling
+        const speedRatio = Math.max(1, ballSpeed / baseSpeed);
+
+        // More particles when ball is faster (up to 2x)
+        const speedBonus = Math.min(2, speedRatio);
+        const baseParticles = Math.floor(6 + intensity * 6);
+        const particleCount = Math.min(16, Math.floor(baseParticles * speedBonus));
+
         const cx = x + width / 2;
         const cy = y + height / 2;
 
+        // Particles are faster and have longer life when ball is fast
+        const speedMultiplier = 0.8 + speedRatio * 0.4;
+        const decayMultiplier = 1.2 - speedRatio * 0.2; // Slower decay for faster ball
+
         for (let i = 0; i < particleCount; i++) {
             const angle = (i / particleCount) * Math.PI * 2;
-            const speed = 2 + Math.random() * 3 * intensity;
+            const speed = (2 + Math.random() * 3 * intensity) * speedMultiplier;
 
             this.getParticle(
                 cx + (Math.random() - 0.5) * width * 0.5,
@@ -243,7 +261,7 @@ export class ParticleManager {
                     color: color,
                     size: 2 + Math.random() * 3,
                     type: Math.random() > 0.5 ? 'square' : 'spark',
-                    decay: 0.02 + Math.random() * 0.02,
+                    decay: (0.02 + Math.random() * 0.02) * decayMultiplier,
                     gravity: 0.12,
                 }
             );

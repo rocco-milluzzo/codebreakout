@@ -69,4 +69,28 @@ export const CONFIG = {
         PADDLE_WIDTH_MULTIPLIER: 1.5,  // 50% wider paddle
         POWERUP_DROP_MULTIPLIER: 2.0,  // Double powerup drop chance
     },
+
+    // Juice & Feel - Screen Shake
+    SCREEN_SHAKE: {
+        BASE_INTENSITY: 3,
+        COMBO_MULTIPLIER: 0.5,      // Extra intensity per combo point
+        MAX_INTENSITY: 15,
+        BASE_DURATION: 100,
+        COMBO_DURATION_BONUS: 20,   // Extra ms per combo point
+        MAX_DURATION: 300,
+    },
+
+    // Juice & Feel - Hit Stop
+    HIT_STOP: {
+        STRONG_DURATION: 30,        // ms for STRONG brick
+        UNBREAKABLE_DURATION: 50,   // ms for UNBREAKABLE brick
+        TOUGH_DURATION: 40,         // ms for TOUGH brick
+        HAZARD_DURATION: 60,        // ms for HAZARD brick
+    },
+
+    // Juice & Feel - Slow Motion
+    SLOW_MOTION: {
+        DURATION: 300,              // ms of slowmo
+        FACTOR: 0.3,                // 30% speed during slowmo
+    },
 };
